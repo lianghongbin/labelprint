@@ -564,12 +564,6 @@
                         </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="cacheEnabled" checked onchange="updateCacheSettings()">
-                            启用数据缓存
-                        </label>
-                    </div>
                     
                     
                     <div class="cache-status">
@@ -1098,9 +1092,16 @@
         }
         
         async function syncToServer() {
+            if (pendingUpdates.length === 0) {
+                showStatus('没有数据需要同步', true);
+                return;
+            }
+            
             const syncBtn = document.getElementById('syncBtn');
             syncBtn.disabled = true;
             syncBtn.textContent = '同步中...';
+            
+            showStatus('正在同步到在线表格...', true);
             
             await syncPendingUpdates();
             
@@ -1235,8 +1236,15 @@
                 showStatus('正在刷新缓存...', true);
                 
                 if (type === 'labelData') {
-                    // 刷新标签数据缓存 - 重新获取所有标签组数据
+                    // 刷新标签数据缓存 - 重新获取标签组列表和当前选中组的数据
                     const success = await fetchLabelGroups();
+                    if (success && selectedLabelGroup) {
+                        // 如果当前有选中的标签组，重新获取其数据
+                        const labelSuccess = await fetchLabelGroupLabels(selectedLabelGroup);
+                        if (labelSuccess) {
+                            showLabelGroupInfo();
+                        }
+                    }
                     if (success) {
                         showStatus('标签数据缓存刷新完成', true);
                         updateCacheStatus();
@@ -1269,18 +1277,13 @@
         }
         
         async function clearCache(type) {
-            if (!confirm('确定要清除缓存吗？')) {
-                return;
-            }
-            
             try {
                 showStatus('正在清除缓存...', true);
                 
                 if (type === 'all') {
-                    // 清除本地标签数据缓存
+                    // 清除本地标签数据缓存，但保留标签组列表和显示
                     labelGroupsCache = {};
-                    selectedLabelGroup = null;
-                    hideLabelGroupInfo();
+                    // 不清空 selectedLabelGroup 和 labelGroups，不清空显示数据
                     showStatus('缓存清除成功！', true);
                     // 立即更新缓存状态显示
                     const labelDataStatus = document.getElementById('labelDataCacheStatus');
@@ -1313,6 +1316,11 @@
             } catch (error) {
                 showStatus('清除缓存失败: ' + error.message, false);
             }
+        }
+        
+        // 测试函数
+        function testFunction() {
+            alert('JavaScript is working!');
         }
         
         // 页面加载完成
