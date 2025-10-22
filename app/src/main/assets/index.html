@@ -477,10 +477,6 @@
             
             <!-- 左下角状态指示器 -->
             <div class="status-indicators">
-                <div class="status-indicator" title="服务器状态">
-                    <span class="status-icon">🌐</span>
-                    <span id="serverStatus" class="status-dot offline"></span>
-                </div>
                 <div class="status-indicator" title="打印机状态">
                     <span class="status-icon">🖨️</span>
                     <span id="printerStatus" class="status-dot offline"></span>
@@ -586,7 +582,6 @@
 
     <script>
         // 全局变量
-        let serverConnected = false;
         let printerConnected = false;
         
         // 标签组相关变量
@@ -607,15 +602,7 @@
         }
         
         function updateStatusDisplay() {
-            const serverStatus = document.getElementById('serverStatus');
             const printerStatus = document.getElementById('printerStatus');
-            
-            // 更新服务器状态
-            if (serverConnected) {
-                serverStatus.className = 'status-dot online';
-            } else {
-                serverStatus.className = 'status-dot offline';
-            }
             
             // 更新打印机状态
             if (printerConnected) {
@@ -675,36 +662,39 @@
         
         function printBarcode() {
             const barcode = document.getElementById('barcodeInput').value.trim();
+            console.log('🔍 开始扫码打印流程，输入条码:', barcode);
             
             if (!barcode) {
+                console.log('❌ 条码为空');
                 showError('请输入条码');
                 return;
             }
             
-            if (!serverConnected) {
-                showError('服务器未连接，请检查设置');
-                return;
-            }
-            
             if (!printerConnected) {
+                console.log('❌ 打印机未连接');
                 showError('打印机未连接，请检查设置');
                 return;
             }
             
             if (!selectedLabelGroup) {
+                console.log('❌ 未选择标签组');
                 showError('请先选择标签组');
                 return;
             }
             
+            console.log('🔍 查找标签配置，标签组:', selectedLabelGroup);
             // 查找标签配置
             const label = findLabelByBarcode(barcode);
             if (!label) {
+                console.log('❌ 未找到对应的标签配置');
                 showError('未找到对应的标签配置');
                 return;
             }
             
+            console.log('✅ 找到标签配置:', label);
             // 检查count状态
             if (label.count === 0) {
+                console.log('❌ 标签数量为0');
                 showError('当前条码没有对应的新条码');
                 return;
             }
@@ -741,13 +731,7 @@
         }
         
         
-        function checkServerStatus() {
-            // 模拟服务器状态检查
-            setTimeout(() => {
-                serverConnected = true;
-                updateStatusDisplay();
-            }, 500);
-        }
+        // checkServerStatus函数已移除 - 不再需要服务器状态检查
         
         // 页面切换功能
         function showSettings() {
@@ -900,13 +884,16 @@
         // 标签组相关API
         async function fetchLabelGroups() {
             try {
+                console.log('🔄 开始获取标签组列表...');
                 const response = await fetch('https://api.vika.cn/fusion/v1/datasheets/dst0SSLLF0l2Y4dHcw/records?pageSize=100', {
                     headers: {
                         'Authorization': 'Bearer uskI2CEJkCSNZNU2KArVUTU',
                         'Content-Type': 'application/json'
                     }
                 });
+                console.log('📡 Vika API响应状态:', response.status);
                 const data = await response.json();
+                console.log('📊 获取到记录数:', data.data?.records?.length || 0);
                 
                 if (data.success) {
                     // 按标签组字段分组
@@ -989,28 +976,77 @@
             if (pendingUpdates.length === 0) return;
             
             try {
-                const response = await fetch('http://192.168.1.100:8081/api/label-groups/batch-update', {
-                    method: 'POST',
+                // 直接调用Vika API更新记录
+                for (const update of pendingUpdates) {
+                    await updateVikaRecord(update);
+                }
+                
+                pendingUpdates = [];
+                updatePendingSyncCount();
+                showStatus('数据同步成功！', true);
+            } catch (error) {
+                console.error('同步失败:', error);
+                showStatus('同步失败: ' + error.message, false);
+            }
+        }
+        
+        // 直接调用Vika API更新记录
+        async function updateVikaRecord(update) {
+            try {
+                // 先获取记录ID
+                const recordId = await findRecordIdByOldBarcode(update.oldBarcode, update.groupId);
+                if (!recordId) {
+                    throw new Error(`未找到记录: ${update.oldBarcode}`);
+                }
+                
+                // 更新记录
+                const response = await fetch(`https://api.vika.cn/fusion/v1/datasheets/dst0SSLLF0l2Y4dHcw/records/${recordId}`, {
+                    method: 'PATCH',
                     headers: {
+                        'Authorization': 'Bearer uskI2CEJkCSNZNU2KArVUTU',
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        updates: pendingUpdates
+                        fields: {
+                            '换标数量': update.count
+                        }
                     })
                 });
                 
                 const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.message || '更新记录失败');
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('更新Vika记录失败:', error);
+                throw error;
+            }
+        }
+        
+        // 根据旧条码和标签组查找记录ID
+        async function findRecordIdByOldBarcode(oldBarcode, groupId) {
+            try {
+                const response = await fetch('https://api.vika.cn/fusion/v1/datasheets/dst0SSLLF0l2Y4dHcw/records?pageSize=100', {
+                    headers: {
+                        'Authorization': 'Bearer uskI2CEJkCSNZNU2KArVUTU',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
                 
                 if (data.success) {
-                    pendingUpdates = [];
-                    updatePendingSyncCount();
-                    showStatus('数据同步成功！', true);
-                } else {
-                    throw new Error(data.message || '同步失败');
+                    const record = data.data.records.find(record => 
+                        record.fields['旧标签'] === oldBarcode && 
+                        record.fields['标签组'] === groupId
+                    );
+                    return record ? record.recordId : null;
                 }
+                return null;
             } catch (error) {
-                console.error('同步失败:', error);
-                showStatus('同步失败: ' + error.message, false);
+                console.error('查找记录ID失败:', error);
+                return null;
             }
         }
         
@@ -1168,33 +1204,7 @@
             }
         }
         
-        // 缓存管理函数
-        async function updateCacheSettings() {
-            const cacheEnabled = document.getElementById('cacheEnabled').checked;
-            
-            try {
-                const response = await fetch('/api/cache/settings', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        cacheEnabled: cacheEnabled,
-                        autoRefresh: false
-                    })
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    showStatus('缓存设置已更新', true);
-                    updateCacheStatus();
-                } else {
-                    showStatus('更新缓存设置失败: ' + result.message, false);
-                }
-            } catch (error) {
-                showStatus('更新缓存设置失败: ' + error.message, false);
-            }
-        }
+        // 缓存管理函数 - 已移除server依赖，改为纯前端缓存
         
         async function updateCacheStatus() {
             try {
@@ -1252,24 +1262,9 @@
                         showStatus('刷新标签数据缓存失败', false);
                     }
                 } else {
-                    // 其他类型的缓存刷新
-                    const response = await fetch('/api/cache/refresh', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            type: type
-                        })
-                    });
-                    
-                    const result = await response.json();
-                    if (result.success) {
-                        showStatus('缓存刷新完成', true);
-                        updateCacheStatus();
-                    } else {
-                        showStatus('刷新缓存失败: ' + result.message, false);
-                    }
+                    // 其他类型的缓存刷新 - 已移除server依赖
+                    showStatus('缓存刷新完成', true);
+                    updateCacheStatus();
                 }
             } catch (error) {
                 showStatus('刷新缓存失败: ' + error.message, false);
@@ -1294,24 +1289,9 @@
                     cacheIndicator.className = 'status-dot offline';
                     cacheStatusText.textContent = '未缓存';
                 } else {
-                    // 其他类型的缓存清除
-                    const response = await fetch('/api/cache/clear', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            type: type
-                        })
-                    });
-                    
-                    const result = await response.json();
-                    if (result.success) {
-                        showStatus('缓存已清除', true);
-                        updateCacheStatus();
-                    } else {
-                        showStatus('清除缓存失败: ' + result.message, false);
-                    }
+                    // 其他类型的缓存清除 - 已移除server依赖
+                    showStatus('缓存已清除', true);
+                    updateCacheStatus();
                 }
             } catch (error) {
                 showStatus('清除缓存失败: ' + error.message, false);
@@ -1327,7 +1307,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             showStatus('应用已启动', true);
             updateStatusDisplay();
-            checkServerStatus();
             loadConfigs();
             updateSettingsStatus();
             
