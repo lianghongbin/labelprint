@@ -799,6 +799,14 @@
             
             // 如果切换到标签tab，更新缓存状态
             if (tabName === 'label') {
+                // 恢复标签组选择框的值
+                const labelGroupSelect = document.getElementById('labelGroupSelect');
+                if (selectedLabelGroup) {
+                    labelGroupSelect.value = selectedLabelGroup;
+                } else {
+                    labelGroupSelect.value = '';
+                }
+                
                 // 检查是否有缓存数据，如果有则更新状态
                 let totalLabelCount = 0;
                 Object.values(labelGroupsCache).forEach(group => {
@@ -1015,6 +1023,7 @@
         // 标签组选择相关
         function updateLabelGroupSelect() {
             const select = document.getElementById('labelGroupSelect');
+            const currentValue = select.value; // 保存当前选中的值
             select.innerHTML = '<option value="">请选择标签组</option>';
             
             labelGroups.forEach(group => {
@@ -1023,6 +1032,11 @@
                 option.textContent = group.name;
                 select.appendChild(option);
             });
+            
+            // 恢复之前选中的值
+            if (currentValue && selectedLabelGroup === currentValue) {
+                select.value = currentValue;
+            }
         }
         
         async function onLabelGroupChange() {
