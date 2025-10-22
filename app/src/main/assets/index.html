@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EZAP 标签打印</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            position: relative;
+            min-height: 100vh;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: #007bff;
+            color: white;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        .settings-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        
+        .settings-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .page {
+            display: none;
+            padding: 15px;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        .scan-section {
+            margin-bottom: 15px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .scan-section h3 {
+            margin-top: 0;
+            color: #666;
+        }
+        
+        .scan-input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .scan-input-container input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            font-size: 18px;
+            font-family: monospace;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        
+        .scan-input-container input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+        
+        .scan-input-container button {
+            width: 100%;
+            padding: 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .scan-input-container button:hover {
+            background: #0056b3;
+        }
+        
+        .error-section {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: #f8d7da;
+            color: #721c24;
+            border-radius: 3px;
+            border: 1px solid #f5c6cb;
+            font-size: 14px;
+        }
+        
+        .error-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .error-icon {
+            font-size: 1.2rem;
+        }
+        
+        .error-close {
+            background: none;
+            border: none;
+            color: #721c24;
+            font-size: 1.5rem;
+            cursor: pointer;
+            margin-left: auto;
+        }
+        
+        
+        .status-indicators {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .status-icon {
+            font-size: 1rem;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .status-dot.online {
+            background: #28a745;
+        }
+        
+        .status-dot.offline {
+            background: #dc3545;
+        }
+        
+        .settings-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab-nav {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background: #f8f9fa;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+        }
+        
+        .tab-btn.active {
+            background: white;
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .settings-section {
+            margin-bottom: 15px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .section-header h3 {
+            margin: 0;
+            color: #666;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 12px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-sizing: border-box;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .form-actions button {
+            flex: 1;
+            min-width: 100px;
+            padding: 8px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .form-actions button:hover {
+            background: #0056b3;
+        }
+        
+        .label-group-info {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 5px;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        
+        .group-name, .group-description, .group-stats {
+            margin: 3px 0;
+        }
+        
+        .label-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        
+        .label-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            font-family: monospace;
+        }
+        
+        .label-item:last-child {
+            border-bottom: none;
+        }
+        
+        .label-barcode {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .label-count {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .label-count.available {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .label-count.unlimited {
+            background: #cce5ff;
+            color: #004085;
+        }
+        
+        .label-count.empty {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .label-empty {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+        }
+        
+        .status {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-info {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .label {
+            font-weight: bold;
+            min-width: 80px;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .status-dot.online {
+            background: #28a745;
+        }
+        
+        .status-dot.offline {
+            background: #dc3545;
+        }
+        
+        .cache-status {
+            margin: 12px 0;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .cache-info {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .cache-info div {
+            margin: 5px 0;
+        }
+        
+        .form-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        
+        .form-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>EZAP 标签打印</h1>
+            <button class="settings-btn" onclick="showSettings()" title="设置">⚙️</button>
+        </div>
+        
+        <!-- 业务页面 -->
+        <div id="businessPage" class="page active">
+            <!-- 扫码输入区域 -->
+            <div class="scan-section">
+                <h3>扫码打印</h3>
+                <div class="scan-input-container">
+                    <input type="text" id="barcodeInput" placeholder="扫描或输入条码" oninput="onBarcodeInput()" onkeypress="onBarcodeKeyPress(event)">
+                    <button onclick="printBarcode()">打印</button>
+                </div>
+            </div>
+            
+            <!-- 异常显示区域 -->
+            <div id="errorSection" class="error-section" style="display: none;">
+                <div class="error-content">
+                    <span class="error-icon">⚠️</span>
+                    <span id="errorMessage">错误信息</span>
+                    <button class="error-close" onclick="hideError()">×</button>
+                </div>
+            </div>
+            
+            <!-- 左下角状态指示器 -->
+            <div class="status-indicators">
+                <div class="status-indicator" title="服务器状态">
+                    <span class="status-icon">🌐</span>
+                    <span id="serverStatus" class="status-dot offline"></span>
+                </div>
+                <div class="status-indicator" title="打印机状态">
+                    <span class="status-icon">🖨️</span>
+                    <span id="printerStatus" class="status-dot offline"></span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 设置页面 -->
+        <div id="settingsPage" class="page">
+            <div class="settings-header">
+                <button class="back-btn" onclick="showBusiness()">← 返回</button>
+                <h2>设置</h2>
+            </div>
+            
+            <!-- Tab导航 -->
+            <div class="tab-nav">
+                <button class="tab-btn active" onclick="switchTab('printer')">打印机</button>
+                <button class="tab-btn" onclick="switchTab('label')">标签</button>
+            </div>
+            
+            
+            <!-- 打印机设置Tab -->
+            <div id="printerTab" class="tab-content active">
+                <div class="settings-section">
+                    <div class="section-header">
+                        <h3>打印机设置</h3>
+                        <div class="status-indicator">
+                            <div id="printerStatusIndicator" class="status-dot offline"></div>
+                            <span id="printerStatusText">未连接</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>打印机IP地址:</label>
+                        <input type="text" id="printerIp" placeholder="192.168.1.100" value="192.168.1.100">
+                    </div>
+                    <div class="form-group">
+                        <label>端口号:</label>
+                        <input type="number" id="printerPort" placeholder="9100" value="9100">
+                    </div>
+                    <div class="form-actions">
+                        <button onclick="testPrinter()" id="testPrinterBtn">测试连接</button>
+                        <button onclick="savePrinterConfig()" id="savePrinterBtn">保存配置</button>
+                        <button onclick="printTestPage()" id="printTestBtn" disabled>测试打印</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 标签设置Tab -->
+            <div id="labelTab" class="tab-content">
+                <div class="settings-section">
+                    <div class="section-header">
+                        <h3>标签组设置</h3>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>选择标签组:</label>
+                        <select id="labelGroupSelect" onchange="onLabelGroupChange()">
+                            <option value="">请选择标签组</option>
+                        </select>
+                    </div>
+                    
+                    <div id="labelGroupInfo" class="label-group-info" style="display: none;">
+                        <div class="group-name">当前选择: <span id="currentGroupName">-</span></div>
+                        <div class="group-description">描述: <span id="groupDescription">-</span></div>
+                        <div class="group-stats">标签数量: <span id="labelCount">0</span> | 待同步: <span id="pendingSync">0</span>条</div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button onclick="refreshLabelGroups()" id="refreshBtn">刷新标签组</button>
+                        <button onclick="syncToServer()" id="syncBtn" disabled>同步服务器</button>
+                    </div>
+                </div>
+                
+                <!-- 缓存管理区域 -->
+                <div class="settings-section">
+                    <div class="section-header">
+                        <h3>缓存管理</h3>
+                        <div class="status-indicator">
+                            <div id="cacheStatusIndicator" class="status-dot offline"></div>
+                            <span id="cacheStatusText">未缓存</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="cacheEnabled" checked onchange="updateCacheSettings()">
+                            启用数据缓存
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="autoRefresh" checked onchange="updateCacheSettings()">
+                            自动刷新标签组 (30分钟)
+                        </label>
+                    </div>
+                    
+                    <div class="cache-status">
+                        <div class="cache-info">
+                            <div>标签组缓存: <span id="labelGroupsCacheStatus">未缓存</span></div>
+                            <div>标签数据缓存: <span id="labelDataCacheStatus">未缓存</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button onclick="refreshCache('labelGroups')" id="refreshCacheBtn">刷新标签组缓存</button>
+                        <button onclick="refreshCache('labelData')" id="refreshLabelDataBtn">刷新标签数据缓存</button>
+                        <button onclick="clearCache('all')" id="clearCacheBtn">清除所有缓存</button>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+        
+        <div id="status" class="status" style="display: none;"></div>
+    </div>
+
+    <script>
+        // 全局变量
+        let serverConnected = false;
+        let printerConnected = false;
+        
+        // 标签组相关变量
+        let labelGroups = [];
+        let selectedLabelGroup = null;
+        let labelGroupsCache = {};
+        let pendingUpdates = [];
+        
+        function showStatus(message, isSuccess) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + (isSuccess ? 'success' : 'error');
+            status.style.display = 'block';
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 3000);
+        }
+        
+        function updateStatusDisplay() {
+            const serverStatus = document.getElementById('serverStatus');
+            const printerStatus = document.getElementById('printerStatus');
+            
+            // 更新服务器状态
+            if (serverConnected) {
+                serverStatus.className = 'status-dot online';
+            } else {
+                serverStatus.className = 'status-dot offline';
+            }
+            
+            // 更新打印机状态
+            if (printerConnected) {
+                printerStatus.className = 'status-dot online';
+            } else {
+                printerStatus.className = 'status-dot offline';
+            }
+        }
+        
+        function onBarcodeInput() {
+            // 每次输入后选中所有文本，方便扫码后直接覆盖
+            const input = document.getElementById('barcodeInput');
+            input.select();
+        }
+        
+        function onBarcodeKeyPress(event) {
+            // 回车键直接打印
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                printBarcode();
+            }
+        }
+        
+        function testPrinter() {
+            const ip = document.getElementById('printerIp').value;
+            const port = document.getElementById('printerPort').value;
+            
+            if (!ip || !port) {
+                showStatus('请填写完整的打印机信息', false);
+                return;
+            }
+            
+            showStatus('正在测试连接...', true);
+            
+            // 模拟连接测试
+            setTimeout(() => {
+                printerConnected = true;
+                updateStatusDisplay();
+                showStatus('打印机连接成功！', true);
+            }, 1000);
+        }
+        
+        function printBarcode() {
+            const barcode = document.getElementById('barcodeInput').value.trim();
+            
+            if (!barcode) {
+                showError('请输入条码');
+                return;
+            }
+            
+            if (!serverConnected) {
+                showError('服务器未连接，请检查设置');
+                return;
+            }
+            
+            if (!printerConnected) {
+                showError('打印机未连接，请检查设置');
+                return;
+            }
+            
+            if (!selectedLabelGroup) {
+                showError('请先选择标签组');
+                return;
+            }
+            
+            // 查找标签配置
+            const label = findLabelByBarcode(barcode);
+            if (!label) {
+                showError('未找到对应的标签配置');
+                return;
+            }
+            
+            // 检查count状态
+            if (label.count === 0) {
+                showError('当前条码没有对应的新条码');
+                return;
+            }
+            
+            showStatus('正在打印...', true);
+            hideError(); // 隐藏之前的错误
+            
+            // 模拟打印过程
+            setTimeout(() => {
+                // 模拟打印结果（90%成功率）
+                const success = Math.random() > 0.1;
+                
+                if (success) {
+                    // 更新count（-1表示无限打印，不需要减1）
+                    if (label.count > 0) {
+                        updateLabelCount(barcode, label.count - 1);
+                    }
+                    
+                    showStatus(`打印成功！${label.productName} - ${label.newBarcode}`, true);
+                } else {
+                    showError('打印失败，请重试');
+                }
+                
+                // 清空输入框并重新选中
+                document.getElementById('barcodeInput').value = '';
+                document.getElementById('barcodeInput').focus();
+            }, 2000);
+        }
+        
+        function generateNewBarcode(oldBarcode) {
+            // 模拟生成新条码的逻辑
+            const timestamp = Date.now().toString().slice(-4);
+            return oldBarcode + '-' + timestamp;
+        }
+        
+        
+        function checkServerStatus() {
+            // 模拟服务器状态检查
+            setTimeout(() => {
+                serverConnected = true;
+                updateStatusDisplay();
+            }, 500);
+        }
+        
+        // 页面切换功能
+        function showSettings() {
+            document.getElementById('businessPage').classList.remove('active');
+            document.getElementById('settingsPage').classList.add('active');
+        }
+        
+        function showBusiness() {
+            document.getElementById('settingsPage').classList.remove('active');
+            document.getElementById('businessPage').classList.add('active');
+        }
+        
+        // 错误显示功能
+        function showError(message) {
+            const errorSection = document.getElementById('errorSection');
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorSection.style.display = 'block';
+        }
+        
+        function hideError() {
+            const errorSection = document.getElementById('errorSection');
+            errorSection.style.display = 'none';
+        }
+        
+        // Tab切换功能
+        function switchTab(tabName) {
+            // 隐藏所有tab内容
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 移除所有tab按钮的active状态
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // 显示选中的tab内容
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            
+            // 激活选中的tab按钮
+            event.target.classList.add('active');
+            
+            // 如果切换到标签tab，更新缓存状态
+            if (tabName === 'label') {
+                updateCacheStatus();
+            }
+        }
+        
+        // 更新设置页面状态显示
+        function updateSettingsStatus() {
+            
+            // 更新打印机状态
+            const printerIndicator = document.getElementById('printerStatusIndicator');
+            const printerText = document.getElementById('printerStatusText');
+            const printTestBtn = document.getElementById('printTestBtn');
+            if (printerConnected) {
+                printerIndicator.className = 'status-dot online';
+                printerText.textContent = '已连接';
+                printTestBtn.disabled = false;
+            } else {
+                printerIndicator.className = 'status-dot offline';
+                printerText.textContent = '未连接';
+                printTestBtn.disabled = true;
+            }
+            
+            // 更新标签组状态
+        }
+        
+        // 设置页面功能
+        
+        function savePrinterConfig() {
+            const ip = document.getElementById('printerIp').value;
+            const port = document.getElementById('printerPort').value;
+            
+            if (!ip || !port) {
+                showStatus('请填写完整的打印机信息', false);
+                return;
+            }
+            
+            // 保存到本地存储
+            localStorage.setItem('printerConfig', JSON.stringify({ip, port}));
+            showStatus('打印机配置保存成功！', true);
+            updateSettingsStatus();
+        }
+        
+        function saveLabelConfig() {
+            const width = document.getElementById('labelWidth').value;
+            const height = document.getElementById('labelHeight').value;
+            const density = document.getElementById('printDensity').value;
+            
+            if (!width || !height) {
+                showStatus('请填写完整的标签信息', false);
+                return;
+            }
+            
+            // 保存到本地存储
+            localStorage.setItem('labelConfig', JSON.stringify({width, height, density}));
+            showStatus('标签配置保存成功！', true);
+            updateSettingsStatus();
+        }
+        
+        function printTestPage() {
+            if (!printerConnected) {
+                showStatus('打印机未连接', false);
+                return;
+            }
+            
+            const printBtn = document.getElementById('printTestBtn');
+            printBtn.disabled = true;
+            printBtn.textContent = '打印中...';
+            
+            showStatus('正在打印测试页...', true);
+            
+            setTimeout(() => {
+                showStatus('测试页打印完成！', true);
+                printBtn.disabled = false;
+                printBtn.textContent = '测试打印';
+            }, 2000);
+        }
+        
+        // 标签组相关API
+        async function fetchLabelGroups() {
+            try {
+                const response = await fetch('https://api.vika.cn/fusion/v1/datasheets/dst0SSLLF0l2Y4dHcw/records?pageSize=100', {
+                    headers: {
+                        'Authorization': 'Bearer uskI2CEJkCSNZNU2KArVUTU',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 按标签组字段分组
+                    const groupMap = new Map();
+                    data.data.records.forEach(record => {
+                        const groupName = record.fields['标签组'];
+                        if (groupName && !groupMap.has(groupName)) {
+                            groupMap.set(groupName, {
+                                id: groupName,
+                                name: groupName,
+                                description: `标签组: ${groupName}`
+                            });
+                        }
+                    });
+                    
+                    labelGroups = Array.from(groupMap.values());
+                    updateLabelGroupSelect();
+                    return true;
+                } else {
+                    throw new Error(data.message || '获取标签组失败');
+                }
+            } catch (error) {
+                console.error('获取标签组失败:', error);
+                showStatus('获取标签组失败: ' + error.message, false);
+                return false;
+            }
+        }
+        
+        async function fetchLabelGroupLabels(groupId) {
+            try {
+                const response = await fetch('https://api.vika.cn/fusion/v1/datasheets/dst0SSLLF0l2Y4dHcw/records?pageSize=100', {
+                    headers: {
+                        'Authorization': 'Bearer uskI2CEJkCSNZNU2KArVUTU',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 筛选指定标签组的记录
+                    const groupRecords = data.data.records.filter(record => {
+                        return record.fields['标签组'] === groupId;
+                    });
+                    
+                    // 保存到缓存
+                    labelGroupsCache[groupId] = {
+                        name: labelGroups.find(g => g.id === groupId)?.name || '',
+                        description: labelGroups.find(g => g.id === groupId)?.description || '',
+                        labels: {}
+                    };
+                    
+                    // 处理标签数据
+                    groupRecords.forEach(record => {
+                        const oldBarcode = record.fields['旧标签'];
+                        const newBarcode = record.fields['新标签'];
+                        if (oldBarcode && newBarcode) {
+                            labelGroupsCache[groupId].labels[oldBarcode] = {
+                                newBarcode: newBarcode,
+                                productName: record.fields['产品名称'] || '产品',
+                                description: record.fields['产品描述'] || '产品描述',
+                                count: record.fields['换标数量'] || 1,
+                                originalCount: record.fields['换标数量'] || 1
+                            };
+                        }
+                    });
+                    
+                    return true;
+                } else {
+                    throw new Error(data.message || '获取标签数据失败');
+                }
+            } catch (error) {
+                console.error('获取标签数据失败:', error);
+                showStatus('获取标签数据失败: ' + error.message, false);
+                return false;
+            }
+        }
+        
+        async function syncPendingUpdates() {
+            if (pendingUpdates.length === 0) return;
+            
+            try {
+                const response = await fetch('http://192.168.1.100:8081/api/label-groups/batch-update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        updates: pendingUpdates
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    pendingUpdates = [];
+                    updatePendingSyncCount();
+                    showStatus('数据同步成功！', true);
+                } else {
+                    throw new Error(data.message || '同步失败');
+                }
+            } catch (error) {
+                console.error('同步失败:', error);
+                showStatus('同步失败: ' + error.message, false);
+            }
+        }
+        
+        // 标签组选择相关
+        function updateLabelGroupSelect() {
+            const select = document.getElementById('labelGroupSelect');
+            select.innerHTML = '<option value="">请选择标签组</option>';
+            
+            labelGroups.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group.id;
+                option.textContent = group.name;
+                select.appendChild(option);
+            });
+        }
+        
+        async function onLabelGroupChange() {
+            const groupId = document.getElementById('labelGroupSelect').value;
+            
+            if (!groupId) {
+                selectedLabelGroup = null;
+                hideLabelGroupInfo();
+                return;
+            }
+            
+            // 加载标签组数据
+            const success = await fetchLabelGroupLabels(groupId);
+            if (success) {
+                selectedLabelGroup = groupId;
+                showLabelGroupInfo();
+                updateSettingsStatus();
+            }
+        }
+        
+        function showLabelGroupInfo() {
+            const group = labelGroups.find(g => g.id === selectedLabelGroup);
+            const cache = labelGroupsCache[selectedLabelGroup];
+            
+            if (group && cache) {
+                document.getElementById('currentGroupName').textContent = group.name;
+                document.getElementById('groupDescription').textContent = group.description;
+                document.getElementById('labelCount').textContent = Object.keys(cache.labels).length;
+                document.getElementById('pendingSync').textContent = pendingUpdates.length;
+                
+                document.getElementById('labelGroupInfo').style.display = 'block';
+            }
+        }
+        
+        function hideLabelGroupInfo() {
+            document.getElementById('labelGroupInfo').style.display = 'none';
+        }
+        
+        
+        function updatePendingSyncCount() {
+            document.getElementById('pendingSync').textContent = pendingUpdates.length;
+            const syncBtn = document.getElementById('syncBtn');
+            syncBtn.disabled = pendingUpdates.length === 0;
+        }
+        
+        async function refreshLabelGroups() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '刷新中...';
+            
+            const success = await fetchLabelGroups();
+            
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = '刷新标签组';
+            
+            if (success) {
+                showStatus('标签组刷新成功！', true);
+            }
+        }
+        
+        async function syncToServer() {
+            const syncBtn = document.getElementById('syncBtn');
+            syncBtn.disabled = true;
+            syncBtn.textContent = '同步中...';
+            
+            await syncPendingUpdates();
+            
+            syncBtn.disabled = false;
+            syncBtn.textContent = '同步服务器';
+        }
+        
+        // 扫码打印业务逻辑
+        function findLabelByBarcode(oldBarcode) {
+            if (!selectedLabelGroup || !labelGroupsCache[selectedLabelGroup]) {
+                return null;
+            }
+            
+            const cache = labelGroupsCache[selectedLabelGroup];
+            return cache.labels[oldBarcode] || null;
+        }
+        
+        function updateLabelCount(oldBarcode, newCount) {
+            if (!selectedLabelGroup || !labelGroupsCache[selectedLabelGroup]) {
+                return;
+            }
+            
+            const cache = labelGroupsCache[selectedLabelGroup];
+            if (cache.labels[oldBarcode]) {
+                cache.labels[oldBarcode].count = newCount;
+                
+                // 如果count变为0，加入待同步队列
+                if (newCount === 0 && cache.labels[oldBarcode].originalCount > 0) {
+                    // 检查是否已经在待同步队列中
+                    const existingIndex = pendingUpdates.findIndex(update => 
+                        update.oldBarcode === oldBarcode
+                    );
+                    
+                    if (existingIndex === -1) {
+                        pendingUpdates.push({
+                            groupId: selectedLabelGroup,
+                            oldBarcode: oldBarcode,
+                            count: 0
+                        });
+                    }
+                    
+                    updatePendingSyncCount();
+                }
+                
+            }
+        }
+        
+        function loadConfigs() {
+            // 加载打印机配置
+            const printerConfig = localStorage.getItem('printerConfig');
+            if (printerConfig) {
+                const config = JSON.parse(printerConfig);
+                document.getElementById('printerIp').value = config.ip;
+                document.getElementById('printerPort').value = config.port;
+            }
+            
+            // 加载标签配置
+            const labelConfig = localStorage.getItem('labelConfig');
+            if (labelConfig) {
+                const config = JSON.parse(labelConfig);
+                document.getElementById('labelWidth').value = config.width;
+                document.getElementById('labelHeight').value = config.height;
+                document.getElementById('printDensity').value = config.density;
+            }
+        }
+        
+        // 缓存管理函数
+        async function updateCacheSettings() {
+            const cacheEnabled = document.getElementById('cacheEnabled').checked;
+            const autoRefresh = document.getElementById('autoRefresh').checked;
+            
+            try {
+                const response = await fetch('/api/cache/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        cacheEnabled: cacheEnabled,
+                        autoRefresh: autoRefresh
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showStatus('缓存设置已更新', true);
+                    updateCacheStatus();
+                } else {
+                    showStatus('更新缓存设置失败: ' + result.message, false);
+                }
+            } catch (error) {
+                showStatus('更新缓存设置失败: ' + error.message, false);
+            }
+        }
+        
+        async function updateCacheStatus() {
+            try {
+                const response = await fetch('/api/cache/status');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const cache = result.data;
+                    
+                    // 更新缓存状态指示器
+                    const cacheIndicator = document.getElementById('cacheStatusIndicator');
+                    const cacheStatusText = document.getElementById('cacheStatusText');
+                    
+                    if (cache.labelGroups.cached && cache.labelGroups.valid) {
+                        cacheIndicator.className = 'status-dot online';
+                        cacheStatusText.textContent = '已缓存';
+                    } else {
+                        cacheIndicator.className = 'status-dot offline';
+                        cacheStatusText.textContent = '未缓存';
+                    }
+                    
+                    // 更新缓存信息
+                    const labelGroupsStatus = document.getElementById('labelGroupsCacheStatus');
+                    const labelDataStatus = document.getElementById('labelDataCacheStatus');
+                    
+                    if (cache.labelGroups.cached) {
+                        const age = Math.floor(cache.labelGroups.age / 60);
+                        labelGroupsStatus.textContent = `已缓存 (${age}分钟前)`;
+                    } else {
+                        labelGroupsStatus.textContent = '未缓存';
+                    }
+                    
+                    const labelDataCount = Object.keys(cache.labelData).length;
+                    if (labelDataCount > 0) {
+                        labelDataStatus.textContent = `已缓存 (${labelDataCount}个组)`;
+                    } else {
+                        labelDataStatus.textContent = '未缓存';
+                    }
+                }
+            } catch (error) {
+                console.error('获取缓存状态失败:', error);
+            }
+        }
+        
+        async function refreshCache(type) {
+            try {
+                showStatus('正在刷新缓存...', true);
+                
+                const response = await fetch('/api/cache/refresh', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: type
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showStatus('缓存刷新完成', true);
+                    updateCacheStatus();
+                    
+                    // 如果刷新了标签组，重新加载标签组列表
+                    if (type === 'labelGroups' || type === 'all') {
+                        fetchLabelGroups();
+                    }
+                } else {
+                    showStatus('刷新缓存失败: ' + result.message, false);
+                }
+            } catch (error) {
+                showStatus('刷新缓存失败: ' + error.message, false);
+            }
+        }
+        
+        async function clearCache(type) {
+            if (!confirm('确定要清除缓存吗？')) {
+                return;
+            }
+            
+            try {
+                showStatus('正在清除缓存...', true);
+                
+                const response = await fetch('/api/cache/clear', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: type
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showStatus('缓存已清除', true);
+                    updateCacheStatus();
+                } else {
+                    showStatus('清除缓存失败: ' + result.message, false);
+                }
+            } catch (error) {
+                showStatus('清除缓存失败: ' + error.message, false);
+            }
+        }
+        
+        // 页面加载完成
+        document.addEventListener('DOMContentLoaded', function() {
+            showStatus('应用已启动', true);
+            updateStatusDisplay();
+            checkServerStatus();
+            loadConfigs();
+            updateSettingsStatus();
+            
+            // 加载标签组
+            fetchLabelGroups();
+            
+            // 定时同步待更新数据（每30秒）
+            setInterval(syncPendingUpdates, 30000);
+        });
+    </script>
+</body>
+</html>
