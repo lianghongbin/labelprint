@@ -7,7 +7,7 @@
     <style>
         body {
             margin: 0;
-            padding: 10px;
+            padding: 5px;
             font-family: Arial, sans-serif;
             background-color: #f0f0f0;
         }
@@ -27,14 +27,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 15px;
+            padding: 8px 12px;
             background: #007bff;
             color: white;
         }
         
         .header h1 {
             margin: 0;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
         }
         
         .settings-btn {
@@ -53,7 +53,7 @@
         
         .page {
             display: none;
-            padding: 15px;
+            padding: 8px;
         }
         
         .page.active {
@@ -61,8 +61,8 @@
         }
         
         .scan-section {
-            margin-bottom: 15px;
-            padding: 12px;
+            margin-bottom: 10px;
+            padding: 8px;
             border: 1px solid #ddd;
             border-radius: 5px;
         }
@@ -182,26 +182,31 @@
         .settings-header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
+            gap: 8px;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
             border-bottom: 1px solid #ddd;
+        }
+        
+        .settings-header h2 {
+            margin: 0;
+            font-size: 1.1rem;
         }
         
         .tab-nav {
             display: flex;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
             border-bottom: 1px solid #ddd;
         }
         
         .tab-btn {
             flex: 1;
-            padding: 12px;
+            padding: 8px;
             background: #f8f9fa;
             border: none;
             border-bottom: 3px solid transparent;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
             color: #666;
         }
         
@@ -229,8 +234,8 @@
         }
         
         .settings-section {
-            margin-bottom: 15px;
-            padding: 12px;
+            margin-bottom: 10px;
+            padding: 8px;
             border: 1px solid #ddd;
             border-radius: 5px;
         }
@@ -255,7 +260,7 @@
         }
         
         .form-group {
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         
         .form-group label {
@@ -566,22 +571,14 @@
                         </label>
                     </div>
                     
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="autoRefresh" checked onchange="updateCacheSettings()">
-                            自动刷新标签组 (30分钟)
-                        </label>
-                    </div>
                     
                     <div class="cache-status">
                         <div class="cache-info">
-                            <div>标签组缓存: <span id="labelGroupsCacheStatus">未缓存</span></div>
                             <div>标签数据缓存: <span id="labelDataCacheStatus">未缓存</span></div>
                         </div>
                     </div>
                     
                     <div class="form-actions">
-                        <button onclick="refreshCache('labelGroups')" id="refreshCacheBtn">刷新标签组缓存</button>
                         <button onclick="refreshCache('labelData')" id="refreshLabelDataBtn">刷新标签数据缓存</button>
                         <button onclick="clearCache('all')" id="clearCacheBtn">清除所有缓存</button>
                     </div>
@@ -659,12 +656,27 @@
             
             showStatus('正在测试连接...', true);
             
-            // 模拟连接测试
-            setTimeout(() => {
-                printerConnected = true;
+            // 真正的连接测试
+            fetch(`http://${ip}:${port}/`, {
+                method: 'GET',
+                timeout: 5000
+            })
+            .then(response => {
+                if (response.ok) {
+                    printerConnected = true;
+                    updateStatusDisplay();
+                    showStatus('打印机连接成功！', true);
+                } else {
+                    printerConnected = false;
+                    updateStatusDisplay();
+                    showStatus('打印机连接失败：服务器响应错误', false);
+                }
+            })
+            .catch(error => {
+                printerConnected = false;
                 updateStatusDisplay();
-                showStatus('打印机连接成功！', true);
-            }, 1000);
+                showStatus('打印机连接失败：' + error.message, false);
+            });
         }
         
         function printBarcode() {
@@ -787,7 +799,27 @@
             
             // 如果切换到标签tab，更新缓存状态
             if (tabName === 'label') {
-                updateCacheStatus();
+                // 检查是否有缓存数据，如果有则更新状态
+                let totalLabelCount = 0;
+                Object.values(labelGroupsCache).forEach(group => {
+                    if (group.labels) {
+                        totalLabelCount += Object.keys(group.labels).length;
+                    }
+                });
+                
+                const labelDataStatus = document.getElementById('labelDataCacheStatus');
+                const cacheIndicator = document.getElementById('cacheStatusIndicator');
+                const cacheStatusText = document.getElementById('cacheStatusText');
+                
+                if (totalLabelCount > 0) {
+                    labelDataStatus.textContent = `已缓存 (${totalLabelCount}条标签)`;
+                    cacheIndicator.className = 'status-dot online';
+                    cacheStatusText.textContent = '已缓存';
+                } else {
+                    labelDataStatus.textContent = '未缓存';
+                    cacheIndicator.className = 'status-dot offline';
+                    cacheStatusText.textContent = '未缓存';
+                }
             }
         }
         
@@ -941,7 +973,8 @@
                     
                     return true;
                 } else {
-                    throw new Error(data.message || '获取标签数据失败');
+                    showStatus('获取标签数据失败: ' + data.message, false);
+                    return false;
                 }
             } catch (error) {
                 console.error('获取标签数据失败:', error);
@@ -1123,7 +1156,6 @@
         // 缓存管理函数
         async function updateCacheSettings() {
             const cacheEnabled = document.getElementById('cacheEnabled').checked;
-            const autoRefresh = document.getElementById('autoRefresh').checked;
             
             try {
                 const response = await fetch('/api/cache/settings', {
@@ -1133,7 +1165,7 @@
                     },
                     body: JSON.stringify({
                         cacheEnabled: cacheEnabled,
-                        autoRefresh: autoRefresh
+                        autoRefresh: false
                     })
                 });
                 
@@ -1151,41 +1183,33 @@
         
         async function updateCacheStatus() {
             try {
-                const response = await fetch('/api/cache/status');
-                const result = await response.json();
+                // 计算所有标签组中的标签数据总数
+                let totalLabelCount = 0;
+                Object.values(labelGroupsCache).forEach(group => {
+                    if (group.labels) {
+                        totalLabelCount += Object.keys(group.labels).length;
+                    }
+                });
                 
-                if (result.success) {
-                    const cache = result.data;
-                    
-                    // 更新缓存状态指示器
-                    const cacheIndicator = document.getElementById('cacheStatusIndicator');
-                    const cacheStatusText = document.getElementById('cacheStatusText');
-                    
-                    if (cache.labelGroups.cached && cache.labelGroups.valid) {
-                        cacheIndicator.className = 'status-dot online';
-                        cacheStatusText.textContent = '已缓存';
-                    } else {
-                        cacheIndicator.className = 'status-dot offline';
-                        cacheStatusText.textContent = '未缓存';
-                    }
-                    
-                    // 更新缓存信息
-                    const labelGroupsStatus = document.getElementById('labelGroupsCacheStatus');
-                    const labelDataStatus = document.getElementById('labelDataCacheStatus');
-                    
-                    if (cache.labelGroups.cached) {
-                        const age = Math.floor(cache.labelGroups.age / 60);
-                        labelGroupsStatus.textContent = `已缓存 (${age}分钟前)`;
-                    } else {
-                        labelGroupsStatus.textContent = '未缓存';
-                    }
-                    
-                    const labelDataCount = Object.keys(cache.labelData).length;
-                    if (labelDataCount > 0) {
-                        labelDataStatus.textContent = `已缓存 (${labelDataCount}个组)`;
-                    } else {
-                        labelDataStatus.textContent = '未缓存';
-                    }
+                // 更新缓存状态指示器
+                const cacheIndicator = document.getElementById('cacheStatusIndicator');
+                const cacheStatusText = document.getElementById('cacheStatusText');
+                
+                if (totalLabelCount > 0) {
+                    cacheIndicator.className = 'status-dot online';
+                    cacheStatusText.textContent = '已缓存';
+                } else {
+                    cacheIndicator.className = 'status-dot offline';
+                    cacheStatusText.textContent = '未缓存';
+                }
+                
+                // 更新缓存信息
+                const labelDataStatus = document.getElementById('labelDataCacheStatus');
+                
+                if (totalLabelCount > 0) {
+                    labelDataStatus.textContent = `已缓存 (${totalLabelCount}条标签)`;
+                } else {
+                    labelDataStatus.textContent = '未缓存';
                 }
             } catch (error) {
                 console.error('获取缓存状态失败:', error);
@@ -1196,27 +1220,34 @@
             try {
                 showStatus('正在刷新缓存...', true);
                 
-                const response = await fetch('/api/cache/refresh', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        type: type
-                    })
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    showStatus('缓存刷新完成', true);
-                    updateCacheStatus();
-                    
-                    // 如果刷新了标签组，重新加载标签组列表
-                    if (type === 'labelGroups' || type === 'all') {
-                        fetchLabelGroups();
+                if (type === 'labelData') {
+                    // 刷新标签数据缓存 - 重新获取所有标签组数据
+                    const success = await fetchLabelGroups();
+                    if (success) {
+                        showStatus('标签数据缓存刷新完成', true);
+                        updateCacheStatus();
+                    } else {
+                        showStatus('刷新标签数据缓存失败', false);
                     }
                 } else {
-                    showStatus('刷新缓存失败: ' + result.message, false);
+                    // 其他类型的缓存刷新
+                    const response = await fetch('/api/cache/refresh', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            type: type
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        showStatus('缓存刷新完成', true);
+                        updateCacheStatus();
+                    } else {
+                        showStatus('刷新缓存失败: ' + result.message, false);
+                    }
                 }
             } catch (error) {
                 showStatus('刷新缓存失败: ' + error.message, false);
@@ -1231,22 +1262,39 @@
             try {
                 showStatus('正在清除缓存...', true);
                 
-                const response = await fetch('/api/cache/clear', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        type: type
-                    })
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    showStatus('缓存已清除', true);
-                    updateCacheStatus();
+                if (type === 'all') {
+                    // 清除本地标签数据缓存
+                    labelGroupsCache = {};
+                    selectedLabelGroup = null;
+                    hideLabelGroupInfo();
+                    showStatus('缓存清除成功！', true);
+                    // 立即更新缓存状态显示
+                    const labelDataStatus = document.getElementById('labelDataCacheStatus');
+                    const cacheIndicator = document.getElementById('cacheStatusIndicator');
+                    const cacheStatusText = document.getElementById('cacheStatusText');
+                    
+                    labelDataStatus.textContent = '未缓存';
+                    cacheIndicator.className = 'status-dot offline';
+                    cacheStatusText.textContent = '未缓存';
                 } else {
-                    showStatus('清除缓存失败: ' + result.message, false);
+                    // 其他类型的缓存清除
+                    const response = await fetch('/api/cache/clear', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            type: type
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        showStatus('缓存已清除', true);
+                        updateCacheStatus();
+                    } else {
+                        showStatus('清除缓存失败: ' + result.message, false);
+                    }
                 }
             } catch (error) {
                 showStatus('清除缓存失败: ' + error.message, false);
