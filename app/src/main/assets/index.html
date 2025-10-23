@@ -729,15 +729,16 @@
         }
         
         function onBarcodeInput() {
-            // 每次输入后选中所有文本，方便扫码后直接覆盖
-            const input = document.getElementById('barcodeInput');
-            input.select();
+            // 正常输入时不选中内容，保持正常输入体验
         }
         
         function onBarcodeKeyPress(event) {
             // 回车键直接打印
             if (event.key === 'Enter') {
                 event.preventDefault();
+                // 回车时选中所有内容，方便扫码枪使用
+                const input = document.getElementById('barcodeInput');
+                input.select();
                 printBarcode();
             }
         }
@@ -1372,7 +1373,13 @@
             }
             
             const cache = labelGroupsCache[selectedLabelGroup];
-            return cache.labels[oldBarcode] || null;
+            // 大小写不敏感查找
+            for (const [key, value] of Object.entries(cache.labels)) {
+                if (key.toLowerCase() === oldBarcode.toLowerCase()) {
+                    return value;
+                }
+            }
+            return null;
         }
         
         function updateLabelCount(oldBarcode, newCount) {
