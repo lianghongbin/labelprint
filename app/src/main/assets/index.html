@@ -140,6 +140,39 @@
             margin-left: auto;
         }
         
+        .query-result-section {
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid #28a745;
+            border-radius: 5px;
+            background: #d4edda;
+        }
+        
+        .query-result-section h3 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: #155724;
+            font-size: 1rem;
+        }
+        
+        .query-result-content {
+            font-size: 14px;
+            color: #155724;
+        }
+        
+        .query-result-item {
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 3px;
+        }
+        
+        .query-result-label {
+            font-weight: bold;
+            display: inline-block;
+            min-width: 80px;
+        }
+        
         
         .status-indicators {
             position: fixed;
@@ -475,6 +508,14 @@
                 </div>
             </div>
             
+            <!-- 查询结果显示区域 -->
+            <div id="queryResultSection" class="query-result-section" style="display: none;">
+                <h3>查询结果</h3>
+                <div id="queryResultContent" class="query-result-content">
+                    <!-- 查询结果将在这里显示 -->
+                </div>
+            </div>
+            
             <!-- 左下角状态指示器 -->
             <div class="status-indicators">
                 <div class="status-indicator" title="打印机状态">
@@ -495,6 +536,7 @@
             <div class="tab-nav">
                 <button class="tab-btn active" onclick="switchTab('printer')">打印机</button>
                 <button class="tab-btn" onclick="switchTab('label')">标签</button>
+                <button class="tab-btn" onclick="switchTab('template')">模板</button>
             </div>
             
             
@@ -575,6 +617,77 @@
                 </div>
                 
             </div>
+            
+            <!-- 模板设置Tab -->
+            <div id="templateTab" class="tab-content">
+                <div class="settings-section">
+                    <div class="section-header">
+                        <h3>打印模板设置</h3>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>模板名称:</label>
+                        <input type="text" id="templateName" placeholder="ZP621标准模板" value="ZP621标准模板">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>模板内容 (ZPL代码):</label>
+                        <textarea id="templateContent" rows="15" style="width: 100%; font-family: monospace; font-size: 12px; padding: 8px; border: 1px solid #ccc; border-radius: 3px; box-sizing: border-box;">^XA
+^PW600
+^LL450
+^CF0,28
+
+; === 条码区域 ===
+^FO60,30
+^BY3,3,100
+^BCN,100,Y,N,N
+^FD{{barcode}}^FS
+
+; === 条码文字 ===
+^CF0,26
+^FO150,150^FD{{barcode}}^FS
+
+; === 产品描述（自动换行两行） ===
+^CF0,28
+^FO60,200
+^FB480,2,0,L,0
+^FD{{product_description}}^FS
+
+; === 固定状态行 ===
+^CF0,26
+^FO60,300^FDNew^FS
+
+^XZ</textarea>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button onclick="saveTemplate()" id="saveTemplateBtn">保存模板</button>
+                        <button onclick="loadTemplate()" id="loadTemplateBtn">加载模板</button>
+                        <button onclick="testTemplate()" id="testTemplateBtn">测试模板</button>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <div class="section-header">
+                        <h3>模板变量说明</h3>
+                    </div>
+                    <div style="font-size: 14px; color: #666; line-height: 1.5;">
+                        <p><strong>可用变量:</strong></p>
+                        <ul style="margin: 5px 0; padding-left: 20px;">
+                            <li><code>{{barcode}}</code> - 新条码</li>
+                            <li><code>{{product_description}}</code> - 产品描述</li>
+                            <li><code>{{product_name}}</code> - 产品名称</li>
+                        </ul>
+                        <p><strong>模板说明:</strong></p>
+                        <ul style="margin: 5px 0; padding-left: 20px;">
+                            <li>标签尺寸: 600x450 点</li>
+                            <li>条码类型: Code128</li>
+                            <li>产品描述支持自动换行（最多2行）</li>
+                            <li>状态固定显示为"New"</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <div id="status" class="status" style="display: none;"></div>
@@ -589,6 +702,9 @@
         let selectedLabelGroup = null;
         let labelGroupsCache = {};
         let pendingUpdates = [];
+        
+        // 模板相关变量
+        let currentTemplate = null;
         
         function showStatus(message, isSuccess) {
             const status = document.getElementById('status');
@@ -667,8 +783,12 @@
             if (!barcode) {
                 console.log('❌ 条码为空');
                 showError('请输入条码');
+                hideQueryResult();
                 return;
             }
+            
+            // 先显示查询结果
+            showQueryResult(barcode);
             
             if (!printerConnected) {
                 console.log('❌ 打印机未连接');
@@ -702,26 +822,45 @@
             showStatus('正在打印...', true);
             hideError(); // 隐藏之前的错误
             
-            // 模拟打印过程
-            setTimeout(() => {
-                // 模拟打印结果（90%成功率）
-                const success = Math.random() > 0.1;
+            // 使用模板进行实际打印
+            if (currentTemplate) {
+                const printData = {
+                    barcode: label.newBarcode,
+                    product_description: label.description,
+                    product_name: label.productName
+                };
                 
-                if (success) {
-                    // 更新count（-1表示无限打印，不需要减1）
-                    if (label.count > 0) {
-                        updateLabelCount(barcode, label.count - 1);
-                    }
-                    
-                    showStatus(`打印成功！${label.productName} - ${label.newBarcode}`, true);
-                } else {
-                    showError('打印失败，请重试');
+                const zplCode = generateZPL(currentTemplate.content, printData);
+                console.log('生成的ZPL代码:', zplCode);
+                
+                // 发送到打印机
+                sendToPrinter(zplCode);
+                
+                // 更新count（-1表示无限打印，不需要减1）
+                if (label.count > 0) {
+                    updateLabelCount(barcode, label.count - 1);
                 }
                 
-                // 清空输入框并重新选中
-                document.getElementById('barcodeInput').value = '';
-                document.getElementById('barcodeInput').focus();
-            }, 2000);
+                showStatus(`打印命令已发送！${label.productName} - ${label.newBarcode}`, true);
+            } else {
+                // 如果没有模板，使用模拟打印
+                setTimeout(() => {
+                    const success = Math.random() > 0.1;
+                    
+                    if (success) {
+                        if (label.count > 0) {
+                            updateLabelCount(barcode, label.count - 1);
+                        }
+                        showStatus(`打印成功！${label.productName} - ${label.newBarcode}`, true);
+                    } else {
+                        showError('打印失败，请重试');
+                    }
+                }, 2000);
+            }
+            
+            // 清空输入框并重新选中
+            document.getElementById('barcodeInput').value = '';
+            document.getElementById('barcodeInput').focus();
         }
         
         function generateNewBarcode(oldBarcode) {
@@ -755,6 +894,87 @@
         function hideError() {
             const errorSection = document.getElementById('errorSection');
             errorSection.style.display = 'none';
+        }
+        
+        function showQueryResult(barcode) {
+            const queryResultSection = document.getElementById('queryResultSection');
+            const queryResultContent = document.getElementById('queryResultContent');
+            
+            // 清空之前的内容
+            queryResultContent.innerHTML = '';
+            
+            // 显示输入条码
+            queryResultContent.innerHTML += `
+                <div class="query-result-item">
+                    <span class="query-result-label">输入条码:</span>
+                    <span>${barcode}</span>
+                </div>
+            `;
+            
+            // 显示标签组信息
+            if (selectedLabelGroup) {
+                const group = labelGroups.find(g => g.id === selectedLabelGroup);
+                queryResultContent.innerHTML += `
+                    <div class="query-result-item">
+                        <span class="query-result-label">标签组:</span>
+                        <span>${group ? group.name : selectedLabelGroup}</span>
+                    </div>
+                `;
+            } else {
+                queryResultContent.innerHTML += `
+                    <div class="query-result-item">
+                        <span class="query-result-label">标签组:</span>
+                        <span style="color: #dc3545;">未选择</span>
+                    </div>
+                `;
+            }
+            
+            // 查找标签配置
+            if (selectedLabelGroup) {
+                const label = findLabelByBarcode(barcode);
+                if (label) {
+                    queryResultContent.innerHTML += `
+                        <div class="query-result-item">
+                            <span class="query-result-label">新条码:</span>
+                            <span>${label.newBarcode}</span>
+                        </div>
+                        <div class="query-result-item">
+                            <span class="query-result-label">产品名称:</span>
+                            <span>${label.productName}</span>
+                        </div>
+                        <div class="query-result-item">
+                            <span class="query-result-label">产品描述:</span>
+                            <span>${label.description}</span>
+                        </div>
+                        <div class="query-result-item">
+                            <span class="query-result-label">剩余数量:</span>
+                            <span style="color: ${label.count > 0 ? '#28a745' : '#dc3545'};">${label.count === -1 ? '无限' : label.count}</span>
+                        </div>
+                    `;
+                } else {
+                    queryResultContent.innerHTML += `
+                        <div class="query-result-item">
+                            <span class="query-result-label">查询结果:</span>
+                            <span style="color: #dc3545;">未找到对应的标签配置</span>
+                        </div>
+                    `;
+                }
+            } else {
+                queryResultContent.innerHTML += `
+                    <div class="query-result-item">
+                        <span class="query-result-label">查询结果:</span>
+                        <span style="color: #dc3545;">请先选择标签组</span>
+                    </div>
+                `;
+            }
+            
+            // 显示查询结果区域
+            queryResultSection.style.display = 'block';
+        }
+        
+        function hideQueryResult() {
+            const queryResultSection = document.getElementById('queryResultSection');
+            queryResultSection.style.display = 'none';
         }
         
         // Tab切换功能
@@ -1298,6 +1518,109 @@
             }
         }
         
+        // 模板管理函数
+        function saveTemplate() {
+            const templateName = document.getElementById('templateName').value;
+            const templateContent = document.getElementById('templateContent').value;
+            
+            if (!templateName || !templateContent) {
+                showStatus('请填写完整的模板信息', false);
+                return;
+            }
+            
+            // 保存到本地存储
+            const template = {
+                name: templateName,
+                content: templateContent,
+                createdAt: new Date().toISOString()
+            };
+            
+            localStorage.setItem('printTemplate', JSON.stringify(template));
+            currentTemplate = template;
+            showStatus('模板保存成功！', true);
+        }
+        
+        function loadTemplate() {
+            const savedTemplate = localStorage.getItem('printTemplate');
+            if (savedTemplate) {
+                const template = JSON.parse(savedTemplate);
+                document.getElementById('templateName').value = template.name;
+                document.getElementById('templateContent').value = template.content;
+                currentTemplate = template;
+                showStatus('模板加载成功！', true);
+            } else {
+                showStatus('没有找到保存的模板', false);
+            }
+        }
+        
+        function testTemplate() {
+            if (!currentTemplate) {
+                showStatus('请先保存模板', false);
+                return;
+            }
+            
+            // 使用测试数据生成ZPL代码
+            const testData = {
+                barcode: 'TEST123456',
+                product_description: '测试产品描述 - 这是一个很长的产品描述用来测试自动换行功能',
+                product_name: '测试产品'
+            };
+            
+            const zplCode = generateZPL(currentTemplate.content, testData);
+            console.log('生成的ZPL代码:', zplCode);
+            
+            // 显示生成的ZPL代码
+            showStatus('测试模板生成成功，请查看控制台日志', true);
+            
+            // 如果打印机已连接，可以发送测试打印
+            if (printerConnected) {
+                sendToPrinter(zplCode);
+            }
+        }
+        
+        function generateZPL(template, data) {
+            let zpl = template;
+            
+            // 替换变量
+            zpl = zpl.replace(/\{\{barcode\}\}/g, data.barcode || '');
+            zpl = zpl.replace(/\{\{product_description\}\}/g, data.product_description || '');
+            zpl = zpl.replace(/\{\{product_name\}\}/g, data.product_name || '');
+            
+            return zpl;
+        }
+        
+        function sendToPrinter(zplCode) {
+            const ip = document.getElementById('printerIp').value;
+            const port = document.getElementById('printerPort').value;
+            
+            if (!ip || !port) {
+                showStatus('请先配置打印机IP和端口', false);
+                return;
+            }
+            
+            showStatus('正在发送到打印机...', true);
+            
+            // 发送ZPL代码到打印机
+            fetch(`http://${ip}:${port}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain'
+                },
+                body: zplCode
+            })
+            .then(response => {
+                if (response.ok) {
+                    showStatus('打印命令发送成功！', true);
+                return response.text();
+                } else {
+                    throw new Error('打印机响应错误');
+                }
+            })
+            .catch(error => {
+                showStatus('发送打印命令失败: ' + error.message, false);
+            });
+        }
+        
         // 测试函数
         function testFunction() {
             alert('JavaScript is working!');
@@ -1312,6 +1635,9 @@
             
             // 加载标签组
             fetchLabelGroups();
+            
+            // 加载打印模板
+            loadTemplate();
             
             // 定时同步待更新数据（每30秒）
             setInterval(syncPendingUpdates, 30000);
