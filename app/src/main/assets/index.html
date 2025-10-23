@@ -1547,9 +1547,14 @@
                 document.getElementById('templateName').value = template.name;
                 document.getElementById('templateContent').value = template.content;
                 currentTemplate = template;
-                showStatus('模板加载成功！', true);
+                console.log('模板加载成功！');
             } else {
-                showStatus('没有找到保存的模板', false);
+                // 如果没有保存的模板，使用默认模板
+                currentTemplate = {
+                    name: 'ZP621标准模板',
+                    content: document.getElementById('templateContent').value
+                };
+                console.log('使用默认模板');
             }
         }
         
