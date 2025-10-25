@@ -633,29 +633,25 @@
                     <div class="form-group">
                         <label>模板内容 (ZPL代码):</label>
                         <textarea id="templateContent" rows="15" style="width: 100%; font-family: monospace; font-size: 12px; padding: 8px; border: 1px solid #ccc; border-radius: 3px; box-sizing: border-box;">^XA
-^PW600
-^LL450
-^CF0,28
+^PW400
+^LL300
+^CF0,20
 
-; === 条码区域 ===
-^FO60,30
-^BY3,3,100
+; === 条码区域（居中） ===
+^FO40,20
+^BY2,2,100
 ^BCN,100,Y,N,N
 ^FD{{barcode}}^FS
 
-; === 条码文字 ===
-^CF0,26
-^FO150,150^FD{{barcode}}^FS
-
-; === 产品描述（自动换行两行） ===
-^CF0,28
+; === 产品描述（左对齐，自动换行多行） ===
+^CFA,20
 ^FO60,200
-^FB480,2,0,L,0
+^FB320,4,0,L,0
 ^FD{{product_description}}^FS
 
-; === 固定状态行 ===
-^CF0,26
-^FO60,300^FDNew^FS
+; === 固定状态行（左对齐） ===
+^CF0,22
+^FO60,280^FDNew^FS
 
 ^XZ</textarea>
                     </div>
@@ -753,28 +749,30 @@
             }
             
             showStatus('正在测试连接...', true);
+            console.log('测试连接 - IP:', ip, 'Port:', port);
+            console.log('PrinterInterface 可用:', !!window.PrinterInterface);
             
-            // 真正的连接测试
-            fetch(`http://${ip}:${port}/`, {
-                method: 'GET',
-                timeout: 5000
-            })
-            .then(response => {
-                if (response.ok) {
-                    printerConnected = true;
-                    updateStatusDisplay();
-                    showStatus('打印机连接成功！', true);
-                } else {
-                    printerConnected = false;
-                    updateStatusDisplay();
-                    showStatus('打印机连接失败：服务器响应错误', false);
-                }
-            })
-            .catch(error => {
+            // 使用Android接口测试连接
+            if (window.PrinterInterface) {
+                console.log('调用 Android 接口测试连接');
+                window.PrinterInterface.testPrinterConnection(ip, port);
+            } else {
+                console.log('PrinterInterface 不可用');
+                showStatus('打印机接口不可用', false);
+            }
+        }
+        
+        // 打印机测试结果回调
+        function onPrinterTestResult(success, message) {
+            if (success) {
+                printerConnected = true;
+                updateStatusDisplay();
+                showStatus('打印机连接成功！', true);
+            } else {
                 printerConnected = false;
                 updateStatusDisplay();
-                showStatus('打印机连接失败：' + error.message, false);
-            });
+                showStatus('打印机连接失败：' + message, false);
+            }
         }
         
         function printBarcode() {
@@ -1095,11 +1093,29 @@
             
             showStatus('正在打印测试页...', true);
             
+            // 生成测试页 ZPL 代码
+            const testZPL = `^XA
+^FO50,50^ADN,36,20^FD测试页打印^FS
+^FO50,100^ADN,18,10^FD时间: ${new Date().toLocaleString()}^FS
+^FO50,130^ADN,18,10^FD打印机IP: ${document.getElementById('printerIp').value}^FS
+^FO50,160^ADN,18,10^FD端口: ${document.getElementById('printerPort').value}^FS
+^FO50,190^ADN,18,10^FD连接状态: 正常^FS
+^FO50,220^ADN,18,10^FD测试条码: 123456789^FS
+^FO50,250^BY3
+^BCN,100,Y,N,N
+^FD123456789^FS
+^XZ`;
+            
+            console.log('测试页 ZPL 代码:', testZPL);
+            
+            // 发送到打印机
+            sendToPrinter(testZPL);
+            
+            // 恢复按钮状态
             setTimeout(() => {
-                showStatus('测试页打印完成！', true);
                 printBtn.disabled = false;
                 printBtn.textContent = '测试打印';
-            }, 2000);
+            }, 3000);
         }
         
         // 标签组相关API
@@ -1611,26 +1627,27 @@
             }
             
             showStatus('正在发送到打印机...', true);
+            console.log('发送打印 - IP:', ip, 'Port:', port);
+            console.log('ZPL代码:', zplCode);
+            console.log('PrinterInterface 可用:', !!window.PrinterInterface);
             
-            // 发送ZPL代码到打印机
-            fetch(`http://${ip}:${port}/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain'
-                },
-                body: zplCode
-            })
-            .then(response => {
-                if (response.ok) {
-                    showStatus('打印命令发送成功！', true);
-                return response.text();
-                } else {
-                    throw new Error('打印机响应错误');
-                }
-            })
-            .catch(error => {
-                showStatus('发送打印命令失败: ' + error.message, false);
-            });
+            // 使用Android接口发送ZPL代码
+            if (window.PrinterInterface) {
+                console.log('调用 Android 接口发送打印');
+                window.PrinterInterface.sendToPrinter(ip, port, zplCode);
+            } else {
+                console.log('PrinterInterface 不可用');
+                showStatus('打印机接口不可用', false);
+            }
+        }
+        
+        // 打印机发送结果回调
+        function onPrinterSendResult(success, message) {
+            if (success) {
+                showStatus('打印命令发送成功！', true);
+            } else {
+                showStatus('发送打印命令失败: ' + message, false);
+            }
         }
         
         // 测试函数
