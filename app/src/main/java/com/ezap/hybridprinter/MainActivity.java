@@ -10,6 +10,9 @@ import android.util.Log;
 import android.widget.Toast;
 import java.io.*;
 import java.net.*;
+import java.net.HttpURLConnection;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 
 public class MainActivity extends Activity {
     private WebView webView;
@@ -65,7 +68,12 @@ public class MainActivity extends Activity {
                         "    console.log('显示Tab: " + tabName + "');\n" +
                         "} else {\n" +
                         "    console.log('找不到Tab: " + tabName + "');\n" +
-                        "}", null);
+                        "}\n" +
+                        "// 更新Tab按钮焦点样式\n" +
+                        "var allTabs = document.querySelectorAll('.tab-btn');\n" +
+                        "allTabs.forEach(function(btn) { btn.classList.remove('active'); });\n" +
+                        "var activeIndex = " + (tabName.equals("printer") ? "0" : tabName.equals("label") ? "1" : "2") + ";\n" +
+                        "if (allTabs[activeIndex]) allTabs[activeIndex].classList.add('active');", null);
                 });
             }
             
@@ -76,6 +84,8 @@ public class MainActivity extends Activity {
                     webView.evaluateJavascript(
                         "document.getElementById('businessPage').style.display = 'none'; " +
                         "document.getElementById('settingsPage').style.display = 'block'; " +
+                        "var btn = document.getElementById('topRightBtn'); " +
+                        "if (btn) { btn.textContent = '返回'; btn.title = '返回'; } " +
                         "console.log('页面已切换到设置');", null);
                 });
             }
@@ -87,6 +97,8 @@ public class MainActivity extends Activity {
                     webView.evaluateJavascript(
                         "document.getElementById('settingsPage').style.display = 'none'; " +
                         "document.getElementById('businessPage').style.display = 'block'; " +
+                        "var btn = document.getElementById('topRightBtn'); " +
+                        "if (btn) { btn.textContent = '⚙️'; btn.title = '设置'; } " +
                         "console.log('页面已切换到业务');", null);
                 });
             }
@@ -148,6 +160,52 @@ public class MainActivity extends Activity {
                     Log.e(TAG, "发送打印命令失败: " + e.getMessage(), e);
                     runOnUiThread(() -> {
                         webView.evaluateJavascript("onPrinterSendResult(false, '发送失败: " + e.getMessage() + "')", null);
+                    });
+                }
+            }).start();
+        }
+        
+        @JavascriptInterface
+        public void fetchLabelGroups() {
+            Log.d(TAG, "开始获取标签组数据...");
+            new Thread(() -> {
+                try {
+                    URL url = new URL("https://api.vika.cn/fusion/v1/datasheets/dst0SSLLF0l2Y4dHcw/records?pageSize=100");
+                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.setRequestProperty("Authorization", "Bearer uskI2CEJkCSNZNU2KArVUTU");
+                    connection.setRequestProperty("Content-Type", "application/json");
+                    connection.setConnectTimeout(15000);
+                    connection.setReadTimeout(15000);
+                    
+                    int responseCode = connection.getResponseCode();
+                    Log.d(TAG, "Vika API响应状态: " + responseCode);
+                    
+                    if (responseCode == 200) {
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                        StringBuilder response = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            response.append(line);
+                        }
+                        reader.close();
+                        
+                        Log.d(TAG, "获取到Vika数据: " + response.length() + " 字符");
+                        
+                        runOnUiThread(() -> {
+                            String jsCode = "onLabelGroupsReceived('" + response.toString().replace("'", "\\'").replace("\n", "\\n").replace("\r", "\\r") + "')";
+                            webView.evaluateJavascript(jsCode, null);
+                        });
+                    } else {
+                        Log.e(TAG, "Vika API请求失败: " + responseCode);
+                        runOnUiThread(() -> {
+                            webView.evaluateJavascript("onLabelGroupsError('API请求失败: " + responseCode + "')", null);
+                        });
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "获取标签组失败: " + e.getMessage(), e);
+                    runOnUiThread(() -> {
+                        webView.evaluateJavascript("onLabelGroupsError('获取失败: " + e.getMessage() + "')", null);
                     });
                 }
             }).start();

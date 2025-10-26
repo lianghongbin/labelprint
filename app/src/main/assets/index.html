@@ -41,10 +41,11 @@
             background: none;
             border: none;
             color: white;
-            font-size: 1.5rem;
+            font-size: 1rem;
             cursor: pointer;
-            padding: 5px;
+            padding: 5px 10px;
             border-radius: 3px;
+            white-space: nowrap;
         }
         
         .settings-btn:hover {
@@ -238,7 +239,7 @@
             border: none;
             border-bottom: 3px solid transparent;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             color: #666;
         }
         
@@ -484,7 +485,7 @@
         <!-- 头部 -->
         <div class="header">
             <h1>EZAP 标签打印</h1>
-            <button class="settings-btn" onclick="if(window.PrinterInterface){window.PrinterInterface.showSettingsPage();}" title="设置">⚙️</button>
+            <button class="settings-btn" id="topRightBtn" onclick="togglePage()" title="设置">⚙️</button>
         </div>
         
         <!-- 业务页面 -->
@@ -526,11 +527,6 @@
         
         <!-- 设置页面 -->
         <div id="settingsPage" class="page" style="display: none;">
-            <div class="settings-header">
-                <button class="back-btn" onclick="if(window.PrinterInterface){window.PrinterInterface.showBusinessPage();}" title="返回">← 返回</button>
-                <h2>设置</h2>
-            </div>
-            
             <!-- Tab导航 -->
             <div class="tab-nav">
                 <button class="tab-btn active" onclick="if(window.PrinterInterface){window.PrinterInterface.switchTab('printer');}" title="打印机设置">打印机</button>
@@ -689,6 +685,44 @@
     </div>
 
     <script>
+        // 页面切换功能
+        function togglePage() {
+            console.log('togglePage 被调用');
+            const businessPage = document.getElementById('businessPage');
+            const settingsPage = document.getElementById('settingsPage');
+            const topRightBtn = document.getElementById('topRightBtn');
+            
+            console.log('按钮当前文本:', topRightBtn.textContent);
+            
+            // 直接检查按钮的当前文本，而不是页面状态
+            const isCurrentlySettings = topRightBtn.textContent.trim() === '返回';
+            console.log('是设置页面吗?', isCurrentlySettings);
+            
+            if (!isCurrentlySettings) {
+                // 当前是设置图标，切换到设置页面
+                console.log('切换到设置页面');
+                topRightBtn.textContent = '返回';
+                topRightBtn.title = '返回';
+                if (window.PrinterInterface) {
+                    window.PrinterInterface.showSettingsPage();
+                } else {
+                    businessPage.style.display = 'none';
+                    settingsPage.style.display = 'block';
+                }
+            } else {
+                // 当前是返回图标，切换回业务页面
+                console.log('切换回业务页面');
+                topRightBtn.textContent = '⚙️';
+                topRightBtn.title = '设置';
+                if (window.PrinterInterface) {
+                    window.PrinterInterface.showBusinessPage();
+                } else {
+                    settingsPage.style.display = 'none';
+                    businessPage.style.display = 'block';
+                }
+            }
+        }
+        
         // 页面切换功能 - 移到最前面确保按钮点击时函数已定义
         function showSettings() {
             console.log('showSettings 被调用');
@@ -1216,17 +1250,30 @@
         }
         
         // 标签组相关API
-        async function fetchLabelGroups() {
+        function fetchLabelGroups() {
+            console.log('🔄 开始获取标签组列表...');
+            console.log('PrinterInterface 可用:', !!window.PrinterInterface);
+            
+            // 使用Android接口获取标签组
+            if (window.PrinterInterface && window.PrinterInterface.fetchLabelGroups) {
+                console.log('调用 Android 接口获取标签组');
+                try {
+                    window.PrinterInterface.fetchLabelGroups();
+                } catch (error) {
+                    console.error('调用 PrinterInterface.fetchLabelGroups 失败:', error);
+                    showStatus('调用获取标签组接口失败: ' + error.message, false);
+                }
+            } else {
+                console.log('PrinterInterface 不可用或方法不存在');
+                showStatus('获取标签组接口不可用', false);
+            }
+        }
+        
+        // 接收标签组数据的回调函数
+        function onLabelGroupsReceived(dataJson) {
             try {
-                console.log('🔄 开始获取标签组列表...');
-                const response = await fetch('https://api.vika.cn/fusion/v1/datasheets/dst0SSLLF0l2Y4dHcw/records?pageSize=100', {
-                    headers: {
-                        'Authorization': 'Bearer uskI2CEJkCSNZNU2KArVUTU',
-                        'Content-Type': 'application/json'
-                    }
-                });
-                console.log('📡 Vika API响应状态:', response.status);
-                const data = await response.json();
+                console.log('📡 收到Vika API响应:', dataJson.substring(0, 100));
+                const data = JSON.parse(dataJson);
                 console.log('📊 获取到记录数:', data.data?.records?.length || 0);
                 
                 if (data.success) {
@@ -1245,15 +1292,21 @@
                     
                     labelGroups = Array.from(groupMap.values());
                     updateLabelGroupSelect();
-                    return true;
+                    console.log('✅ 标签组更新成功，共' + labelGroups.length + '个分组');
+                    showStatus('标签组获取成功！', true);
                 } else {
                     throw new Error(data.message || '获取标签组失败');
                 }
             } catch (error) {
-                console.error('获取标签组失败:', error);
-                showStatus('获取标签组失败: ' + error.message, false);
-                return false;
+                console.error('处理标签组数据失败:', error);
+                showStatus('处理标签组数据失败: ' + error.message, false);
             }
+        }
+        
+        // 标签组获取失败的回调函数
+        function onLabelGroupsError(errorMsg) {
+            console.error('获取标签组失败:', errorMsg);
+            showStatus('获取标签组失败: ' + errorMsg, false);
         }
         
         async function fetchLabelGroupLabels(groupId) {
@@ -1446,19 +1499,18 @@
             syncBtn.disabled = pendingUpdates.length === 0;
         }
         
-        async function refreshLabelGroups() {
+        function refreshLabelGroups() {
             const refreshBtn = document.getElementById('refreshBtn');
             refreshBtn.disabled = true;
             refreshBtn.textContent = '刷新中...';
             
-            const success = await fetchLabelGroups();
+            fetchLabelGroups();
             
-            refreshBtn.disabled = false;
-            refreshBtn.textContent = '刷新标签组';
-            
-            if (success) {
-                showStatus('标签组刷新成功！', true);
-            }
+            // 3秒后恢复按钮状态（依赖回调函数来更新状态）
+            setTimeout(() => {
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = '刷新标签组';
+            }, 3000);
         }
         
         async function syncToServer() {
@@ -1622,26 +1674,15 @@
             }
         }
         
-        async function refreshCache(type) {
+        function refreshCache(type) {
             try {
                 showStatus('正在刷新缓存...', true);
                 
                 if (type === 'labelData') {
-                    // 刷新标签数据缓存 - 重新获取标签组列表和当前选中组的数据
-                    const success = await fetchLabelGroups();
-                    if (success && selectedLabelGroup) {
-                        // 如果当前有选中的标签组，重新获取其数据
-                        const labelSuccess = await fetchLabelGroupLabels(selectedLabelGroup);
-                        if (labelSuccess) {
-                            showLabelGroupInfo();
-                        }
-                    }
-                    if (success) {
-                        showStatus('标签数据缓存刷新完成', true);
-                        updateCacheStatus();
-                    } else {
-                        showStatus('刷新标签数据缓存失败', false);
-                    }
+                    // 刷新标签数据缓存 - 重新获取标签组列表
+                    fetchLabelGroups();
+                    showStatus('正在刷新标签数据缓存...', true);
+                    updateCacheStatus();
                 } else {
                     // 其他类型的缓存刷新 - 已移除server依赖
                     showStatus('缓存刷新完成', true);
@@ -1800,26 +1841,7 @@
             loadConfigs();
             updateSettingsStatus();
             
-            // 为PDA设备添加额外的事件监听器
-            const settingsBtn = document.querySelector('.settings-btn');
-            if (settingsBtn) {
-                console.log('为设置按钮添加PDA兼容事件监听器');
-                settingsBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    console.log('设置按钮点击事件触发');
-                    showSettings();
-                });
-                settingsBtn.addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    console.log('设置按钮触摸开始事件触发');
-                    showSettings();
-                });
-                settingsBtn.addEventListener('touchend', function(e) {
-                    e.preventDefault();
-                    console.log('设置按钮触摸结束事件触发');
-                    showSettings();
-                });
-            }
+            // 移除重复的事件监听器，只使用HTML的onclick属性
             
             // 为返回按钮添加事件监听器
             const backBtn = document.querySelector('.back-btn');
