@@ -52,7 +52,6 @@
         }
         
         .page {
-            display: none;
             padding: 8px;
         }
         
@@ -485,11 +484,11 @@
         <!-- 头部 -->
         <div class="header">
             <h1>EZAP 标签打印</h1>
-            <button class="settings-btn" onclick="showSettings()" title="设置">⚙️</button>
+            <button class="settings-btn" onclick="if(window.PrinterInterface){window.PrinterInterface.showSettingsPage();}" title="设置">⚙️</button>
         </div>
         
         <!-- 业务页面 -->
-        <div id="businessPage" class="page active">
+        <div id="businessPage" class="page active" style="display: block;">
             <!-- 扫码输入区域 -->
             <div class="scan-section">
                 <h3>扫码打印</h3>
@@ -526,17 +525,17 @@
         </div>
         
         <!-- 设置页面 -->
-        <div id="settingsPage" class="page">
+        <div id="settingsPage" class="page" style="display: none;">
             <div class="settings-header">
-                <button class="back-btn" onclick="showBusiness()">← 返回</button>
+                <button class="back-btn" onclick="if(window.PrinterInterface){window.PrinterInterface.showBusinessPage();}" title="返回">← 返回</button>
                 <h2>设置</h2>
             </div>
             
             <!-- Tab导航 -->
             <div class="tab-nav">
-                <button class="tab-btn active" onclick="switchTab('printer')">打印机</button>
-                <button class="tab-btn" onclick="switchTab('label')">标签</button>
-                <button class="tab-btn" onclick="switchTab('template')">模板</button>
+                <button class="tab-btn active" onclick="if(window.PrinterInterface){window.PrinterInterface.switchTab('printer');}" title="打印机设置">打印机</button>
+                <button class="tab-btn" onclick="if(window.PrinterInterface){window.PrinterInterface.switchTab('label');}" title="标签设置">标签</button>
+                <button class="tab-btn" onclick="if(window.PrinterInterface){window.PrinterInterface.switchTab('template');}" title="模板设置">模板</button>
             </div>
             
             
@@ -690,6 +689,59 @@
     </div>
 
     <script>
+        // 页面切换功能 - 移到最前面确保按钮点击时函数已定义
+        function showSettings() {
+            console.log('showSettings 被调用');
+            try {
+                const businessPage = document.getElementById('businessPage');
+                const settingsPage = document.getElementById('settingsPage');
+                console.log('businessPage元素:', businessPage);
+                console.log('settingsPage元素:', settingsPage);
+                
+                if (businessPage) {
+                    businessPage.style.display = 'none';
+                    console.log('businessPage已隐藏');
+                } else {
+                    console.error('找不到businessPage元素');
+                }
+                
+                if (settingsPage) {
+                    settingsPage.style.display = 'block';
+                    console.log('settingsPage已显示');
+                } else {
+                    console.error('找不到settingsPage元素');
+                }
+            } catch (error) {
+                console.error('显示设置页面失败:', error);
+            }
+        }
+        
+        function showBusiness() {
+            console.log('showBusiness 被调用');
+            try {
+                const settingsPage = document.getElementById('settingsPage');
+                const businessPage = document.getElementById('businessPage');
+                console.log('settingsPage元素:', settingsPage);
+                console.log('businessPage元素:', businessPage);
+                
+                if (settingsPage) {
+                    settingsPage.style.display = 'none';
+                    console.log('settingsPage已隐藏');
+                } else {
+                    console.error('找不到settingsPage元素');
+                }
+                
+                if (businessPage) {
+                    businessPage.style.display = 'block';
+                    console.log('businessPage已显示');
+                } else {
+                    console.error('找不到businessPage元素');
+                }
+            } catch (error) {
+                console.error('显示业务页面失败:', error);
+            }
+        }
+        
         // 全局变量
         let printerConnected = false;
         
@@ -755,13 +807,21 @@
             showStatus('正在测试连接...', true);
             console.log('测试连接 - IP:', ip, 'Port:', port);
             console.log('PrinterInterface 可用:', !!window.PrinterInterface);
+            console.log('window 对象:', typeof window);
+            console.log('PrinterInterface 对象:', window.PrinterInterface);
             
             // 使用Android接口测试连接
-            if (window.PrinterInterface) {
+            if (window.PrinterInterface && window.PrinterInterface.testPrinterConnection) {
                 console.log('调用 Android 接口测试连接');
-                window.PrinterInterface.testPrinterConnection(ip, port);
+                try {
+                    window.PrinterInterface.testPrinterConnection(ip, port);
+                } catch (error) {
+                    console.error('调用 PrinterInterface 失败:', error);
+                    showStatus('调用打印机接口失败: ' + error.message, false);
+                }
             } else {
-                console.log('PrinterInterface 不可用');
+                console.log('PrinterInterface 不可用或方法不存在');
+                console.log('PrinterInterface:', window.PrinterInterface);
                 showStatus('打印机接口不可用', false);
             }
         }
@@ -879,13 +939,40 @@
         
         // 页面切换功能
         function showSettings() {
-            document.getElementById('businessPage').classList.remove('active');
-            document.getElementById('settingsPage').classList.add('active');
+            console.log('showSettings 被调用');
+            try {
+                const businessPage = document.getElementById('businessPage');
+                const settingsPage = document.getElementById('settingsPage');
+                console.log('businessPage元素:', businessPage);
+                console.log('settingsPage元素:', settingsPage);
+                
+                if (businessPage) {
+                    businessPage.style.display = 'none';
+                    console.log('businessPage已隐藏');
+                } else {
+                    console.error('找不到businessPage元素');
+                }
+                
+                if (settingsPage) {
+                    settingsPage.style.display = 'block';
+                    console.log('settingsPage已显示');
+                } else {
+                    console.error('找不到settingsPage元素');
+                }
+            } catch (error) {
+                console.error('显示设置页面失败:', error);
+            }
         }
         
         function showBusiness() {
-            document.getElementById('settingsPage').classList.remove('active');
-            document.getElementById('businessPage').classList.add('active');
+            console.log('showBusiness 被调用');
+            try {
+                document.getElementById('settingsPage').style.display = 'none';
+                document.getElementById('businessPage').style.display = 'block';
+                console.log('业务页面已显示');
+            } catch (error) {
+                console.error('显示业务页面失败:', error);
+            }
         }
         
         // 错误显示功能
@@ -1712,6 +1799,48 @@
             updateStatusDisplay();
             loadConfigs();
             updateSettingsStatus();
+            
+            // 为PDA设备添加额外的事件监听器
+            const settingsBtn = document.querySelector('.settings-btn');
+            if (settingsBtn) {
+                console.log('为设置按钮添加PDA兼容事件监听器');
+                settingsBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('设置按钮点击事件触发');
+                    showSettings();
+                });
+                settingsBtn.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    console.log('设置按钮触摸开始事件触发');
+                    showSettings();
+                });
+                settingsBtn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    console.log('设置按钮触摸结束事件触发');
+                    showSettings();
+                });
+            }
+            
+            // 为返回按钮添加事件监听器
+            const backBtn = document.querySelector('.back-btn');
+            if (backBtn) {
+                console.log('为返回按钮添加PDA兼容事件监听器');
+                backBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('返回按钮点击事件触发');
+                    showBusiness();
+                });
+                backBtn.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    console.log('返回按钮触摸开始事件触发');
+                    showBusiness();
+                });
+                backBtn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    console.log('返回按钮触摸结束事件触发');
+                    showBusiness();
+                });
+            }
             
             // 自动测试打印机连接
             const printerConfig = localStorage.getItem('printerConfig');

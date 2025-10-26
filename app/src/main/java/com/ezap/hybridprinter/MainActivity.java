@@ -7,6 +7,7 @@ import android.webkit.WebViewClient;
 import android.webkit.WebSettings;
 import android.webkit.JavascriptInterface;
 import android.util.Log;
+import android.widget.Toast;
 import java.io.*;
 import java.net.*;
 
@@ -45,9 +46,61 @@ public class MainActivity extends Activity {
     }
     
     // 打印机接口类
-    public class PrinterInterface {
-        @JavascriptInterface
-        public void testPrinterConnection(String ip, String port) {
+        public class PrinterInterface {
+            @JavascriptInterface
+            public void switchTab(String tabName) {
+                Log.d(TAG, "切换到Tab: " + tabName);
+                runOnUiThread(() -> {
+                    // 使用更简单的JavaScript代码
+                    webView.evaluateJavascript(
+                        "var printerTab = document.getElementById('printerTab');\n" +
+                        "var labelTab = document.getElementById('labelTab');\n" +
+                        "var templateTab = document.getElementById('templateTab');\n" +
+                        "if (printerTab) printerTab.style.display = 'none';\n" +
+                        "if (labelTab) labelTab.style.display = 'none';\n" +
+                        "if (templateTab) templateTab.style.display = 'none';\n" +
+                        "var targetTab = document.getElementById('" + tabName + "Tab');\n" +
+                        "if (targetTab) {\n" +
+                        "    targetTab.style.display = 'block';\n" +
+                        "    console.log('显示Tab: " + tabName + "');\n" +
+                        "} else {\n" +
+                        "    console.log('找不到Tab: " + tabName + "');\n" +
+                        "}", null);
+                });
+            }
+            
+            @JavascriptInterface
+            public void showSettingsPage() {
+                Log.d(TAG, "显示设置页面");
+                runOnUiThread(() -> {
+                    webView.evaluateJavascript(
+                        "document.getElementById('businessPage').style.display = 'none'; " +
+                        "document.getElementById('settingsPage').style.display = 'block'; " +
+                        "console.log('页面已切换到设置');", null);
+                });
+            }
+            
+            @JavascriptInterface
+            public void showBusinessPage() {
+                Log.d(TAG, "显示业务页面");
+                runOnUiThread(() -> {
+                    webView.evaluateJavascript(
+                        "document.getElementById('settingsPage').style.display = 'none'; " +
+                        "document.getElementById('businessPage').style.display = 'block'; " +
+                        "console.log('页面已切换到业务');", null);
+                });
+            }
+            
+            @JavascriptInterface
+            public void showToast(String message) {
+                Log.d(TAG, "显示Toast: " + message);
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+                });
+            }
+            
+            @JavascriptInterface
+            public void testPrinterConnection(String ip, String port) {
             Log.d(TAG, "开始测试打印机连接: " + ip + ":" + port);
             new Thread(() -> {
                 try {

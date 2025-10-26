@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">EZAP 标签打印</string>
+    <string name="app_name">自动标签</string>
     <string name="printer_connected">打印机已连接</string>
     <string name="printer_disconnected">打印机已断开</string>
     <string name="print_success">打印成功</string>
