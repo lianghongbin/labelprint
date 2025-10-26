@@ -1720,7 +1720,7 @@
                 if (config.ip && config.port) {
                     console.log('🔄 启动时自动测试打印机连接...');
                     // 直接使用配置中的IP和端口测试连接
-                    await testPrinterWithConfig(config.ip, config.port);
+                    testPrinterWithConfig(config.ip, config.port);
                     // 更新设置页面状态
                     updateSettingsStatus();
                 }
