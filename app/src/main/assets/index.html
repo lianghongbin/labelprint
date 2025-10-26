@@ -485,7 +485,7 @@
         <!-- 头部 -->
         <div class="header">
             <h1>EZAP 标签打印</h1>
-            <button class="settings-btn" id="topRightBtn" onclick="togglePage()" title="设置">⚙️</button>
+            <button class="settings-btn" id="topRightBtn" title="设置">⚙️</button>
         </div>
         
         <!-- 业务页面 -->
@@ -1841,7 +1841,15 @@
             loadConfigs();
             updateSettingsStatus();
             
-            // 移除重复的事件监听器，只使用HTML的onclick属性
+            // 为设置按钮添加事件监听器
+            const settingsBtn = document.querySelector('.settings-btn');
+            if (settingsBtn) {
+                console.log('为设置按钮添加事件监听器');
+                settingsBtn.addEventListener('click', function() {
+                    console.log('设置按钮click事件触发');
+                    togglePage();
+                });
+            }
             
             // 为返回按钮添加事件监听器
             const backBtn = document.querySelector('.back-btn');
