@@ -104,6 +104,33 @@ public class MainActivity extends Activity {
             }
             
             @JavascriptInterface
+            public void togglePage() {
+                Log.d(TAG, "切换页面");
+                runOnUiThread(() -> {
+                    webView.evaluateJavascript(
+                        "var btn = document.getElementById('topRightBtn'); " +
+                        "var businessPage = document.getElementById('businessPage'); " +
+                        "var settingsPage = document.getElementById('settingsPage'); " +
+                        "if (btn && businessPage && settingsPage) { " +
+                        "    var isSettings = btn.textContent.trim() === '返回'; " +
+                        "    if (isSettings) { " +
+                        "        settingsPage.style.display = 'none'; " +
+                        "        businessPage.style.display = 'block'; " +
+                        "        btn.textContent = '⚙️'; " +
+                        "        btn.title = '设置'; " +
+                        "        console.log('切换到业务页面'); " +
+                        "    } else { " +
+                        "        businessPage.style.display = 'none'; " +
+                        "        settingsPage.style.display = 'block'; " +
+                        "        btn.textContent = '返回'; " +
+                        "        btn.title = '返回'; " +
+                        "        console.log('切换到设置页面'); " +
+                        "    } " +
+                        "}", null);
+                });
+            }
+            
+            @JavascriptInterface
             public void showToast(String message) {
                 Log.d(TAG, "显示Toast: " + message);
                 runOnUiThread(() -> {
