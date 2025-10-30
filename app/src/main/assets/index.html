@@ -1111,15 +1111,17 @@
             });
             
             // 移除所有tab按钮的active状态
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
+            const allBtns = document.querySelectorAll('.tab-btn');
+            allBtns.forEach(btn => btn.classList.remove('active'));
             
             // 显示选中的tab内容
             document.getElementById(tabName + 'Tab').classList.add('active');
             
-            // 激活选中的tab按钮
-            event.target.classList.add('active');
+            // 激活选中的tab按钮（通过匹配其onclick目标而非依赖event）
+            const targetBtn = document.querySelector(`.tab-btn[onclick*="switchTab('${tabName}')"]`);
+            if (targetBtn) {
+                targetBtn.classList.add('active');
+            }
             
             // 如果切换到标签tab，更新缓存状态
             if (tabName === 'label') {
@@ -1274,7 +1276,8 @@
             try {
                 console.log('📡 收到Vika API响应:', dataJson.substring(0, 100));
                 const data = JSON.parse(dataJson);
-                console.log('📊 获取到记录数:', data.data?.records?.length || 0);
+                var recordCount = (data && data.data && Array.isArray(data.data.records)) ? data.data.records.length : 0;
+                console.log('📊 获取到记录数:', recordCount);
                 
                 if (data.success) {
                     // 按标签组字段分组
@@ -1326,9 +1329,10 @@
                     });
                     
                     // 保存到缓存
+                    var foundGroup = labelGroups.find(function(g){ return g.id === groupId; });
                     labelGroupsCache[groupId] = {
-                        name: labelGroups.find(g => g.id === groupId)?.name || '',
-                        description: labelGroups.find(g => g.id === groupId)?.description || '',
+                        name: (foundGroup && foundGroup.name) ? foundGroup.name : '',
+                        description: (foundGroup && foundGroup.description) ? foundGroup.description : '',
                         labels: {}
                     };
                     
