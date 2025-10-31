@@ -45,7 +45,7 @@ public class MainActivity extends Activity {
         });
         
         // 加载本地HTML文件
-        webView.loadUrl("file:///android_asset/index.html");
+        webView.loadUrl("file:///android_asset/print.html");
     }
     
     // 打印机接口类
