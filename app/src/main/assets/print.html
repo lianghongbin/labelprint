@@ -342,15 +342,7 @@
             
             // 清空之前的内容
             queryResultContent.innerHTML = '';
-            
-            // 显示输入条码
-            queryResultContent.innerHTML += `
-                <div class="query-result-item">
-                    <span class="query-result-label">输入条码:</span>
-                    <span>${barcode}</span>
-                </div>
-            `;
-            
+
             // 显示标签组信息
             if (selectedLabelGroup) {
                 const group = labelGroups.find(g => g.id === selectedLabelGroup);
@@ -374,10 +366,6 @@
                 const label = await findLabelByBarcode(barcode);
                 if (label) {
                     queryResultContent.innerHTML += `
-                        <div class="query-result-item">
-                            <span class="query-result-label">新条码:</span>
-                            <span>${label.newBarcode}</span>
-                        </div>
                         <div class="query-result-item">
                             <span class="query-result-label">产品名称:</span>
                             <span>${label.productName}</span>
