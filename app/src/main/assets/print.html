@@ -570,10 +570,11 @@
                     
                     if (record) {
                         console.log('✅ 从Vika找到标签数据:', record.fields);
-                        const limitNum = (record.fields['换标数量'] == null || isNaN(Number(record.fields['换标数量']))) ? 1 : Number(record.fields['换标数量']);
+                        // 如果标签数量为空，认为是0；如果打印数量为空，也认为是0
+                        const limitNum = (record.fields['换标数量'] == null || record.fields['换标数量'] === '' || isNaN(Number(record.fields['换标数量']))) ? 0 : Number(record.fields['换标数量']);
                         // 兼容字段名：优先"打印数量"，其次"打印次数"
                         const printedRaw = (record.fields.hasOwnProperty('打印数量') ? record.fields['打印数量'] : record.fields['打印次数']);
-                        const printedNum = (printedRaw == null || isNaN(Number(printedRaw))) ? 0 : Number(printedRaw);
+                        const printedNum = (printedRaw == null || printedRaw === '' || isNaN(Number(printedRaw))) ? 0 : Number(printedRaw);
                         const remaining = Math.max(limitNum - printedNum, 0);
                         const label = {
                             newBarcode: record.fields['新标签'],
@@ -678,7 +679,8 @@
             
             console.log('✅ 找到标签配置:', label);
             // 先计算再打印：基于上限与已打印计算剩余
-            const limit = (typeof label.printLimit === 'number') ? label.printLimit : (typeof label.originalCount === 'number' ? label.originalCount : 1);
+            // 如果标签数量为空，认为是0
+            const limit = (typeof label.printLimit === 'number') ? label.printLimit : (typeof label.originalCount === 'number' ? label.originalCount : 0);
             const printed = (typeof label.printedCount === 'number') ? label.printedCount : ((typeof label.originalCount === 'number' && typeof label.count === 'number') ? (label.originalCount - label.count) : 0);
             const remainingBefore = Math.max(limit - printed, 0);
             if (remainingBefore <= 0) {
@@ -745,6 +747,22 @@
                         showError('打印失败，请重试');
                     }
                 }, 2000);
+            }
+            
+            // 打印完成后，立即同步到 Vika
+            try {
+                console.log('🔄 打印完成，立即同步到 Vika');
+                await updateVikaRecord(updatePayload);
+                // 同步成功，从待同步队列中移除
+                const syncIdx = pendingUpdates.findIndex(u => u.oldBarcode === barcode && u.groupId === selectedLabelGroup);
+                if (syncIdx !== -1) {
+                    pendingUpdates.splice(syncIdx, 1);
+                    updatePendingSyncCount();
+                }
+                console.log('✅ Vika 数据同步成功');
+            } catch (e) {
+                console.error('❌ Vika 同步失败，保留在待同步队列:', e);
+                // 同步失败，保留在待同步队列中，稍后可以手动同步
             }
             
             // 打印完成后，显示更新后的查询结果（显示打印后的数据）
@@ -840,10 +858,11 @@
                         const oldBarcode = record.fields['旧标签'];
                         const newBarcode = record.fields['新标签'];
                         // 数值化：换标数量=上限；打印次数=已打印
-                        const limitNum = (record.fields['换标数量'] == null || isNaN(Number(record.fields['换标数量']))) ? 1 : Number(record.fields['换标数量']);
+                        // 如果标签数量为空，认为是0；如果打印数量为空，也认为是0
+                        const limitNum = (record.fields['换标数量'] == null || record.fields['换标数量'] === '' || isNaN(Number(record.fields['换标数量']))) ? 0 : Number(record.fields['换标数量']);
                         // 兼容字段名：优先"打印数量"，其次"打印次数"
                         const printedRaw = (record.fields.hasOwnProperty('打印数量') ? record.fields['打印数量'] : record.fields['打印次数']);
-                        const printedNum = (printedRaw == null || isNaN(Number(printedRaw))) ? 0 : Number(printedRaw);
+                        const printedNum = (printedRaw == null || printedRaw === '' || isNaN(Number(printedRaw))) ? 0 : Number(printedRaw);
                         const remaining = Math.max(limitNum - printedNum, 0);
                         if (oldBarcode && newBarcode) {
                             labelGroupsCache[groupId].labels[oldBarcode] = {

@@ -941,22 +941,43 @@
                 console.log('📊 获取到记录数:', recordCount);
                 
                 if (data.success) {
-                    // 按标签组字段分组
+                    // 按标签组字段分组，并检查每个分组是否有可打印记录（标签数量 > 打印数量）
                     const groupMap = new Map();
                     data.data.records.forEach(record => {
                         const groupName = record.fields['标签组'];
-                        if (groupName && !groupMap.has(groupName)) {
+                        if (!groupName) return;
+                        
+                        // 计算该记录是否可打印：标签数量（换标数量）> 打印数量
+                        // 如果标签数量为空，认为是0；如果打印数量为空，也认为是0
+                        const limitNum = (record.fields['换标数量'] == null || record.fields['换标数量'] === '' || isNaN(Number(record.fields['换标数量']))) ? 0 : Number(record.fields['换标数量']);
+                        const printedRaw = (record.fields.hasOwnProperty('打印数量') ? record.fields['打印数量'] : record.fields['打印次数']);
+                        const printedNum = (printedRaw == null || printedRaw === '' || isNaN(Number(printedRaw))) ? 0 : Number(printedRaw);
+                        const canPrint = limitNum > printedNum;
+                        
+                        if (!groupMap.has(groupName)) {
+                            // 初始化分组，标记为不可打印（如果有至少一条可打印记录，会更新为true）
                             groupMap.set(groupName, {
                                 id: groupName,
                                 name: groupName,
-                                description: `标签组: ${groupName}`
+                                description: `标签组: ${groupName}`,
+                                hasPrintableRecords: canPrint
                             });
+                        } else {
+                            // 如果当前分组还没有可打印记录，检查这条记录是否可打印
+                            const group = groupMap.get(groupName);
+                            if (!group.hasPrintableRecords && canPrint) {
+                                group.hasPrintableRecords = true;
+                            }
                         }
                     });
                     
-                    labelGroups = Array.from(groupMap.values());
+                    // 过滤掉没有可打印记录的分组（标签数量 <= 打印数量的分组）
+                    labelGroups = Array.from(groupMap.values()).filter(group => group.hasPrintableRecords);
+                    // 移除临时属性
+                    labelGroups.forEach(group => delete group.hasPrintableRecords);
+                    
                     updateLabelGroupSelect();
-                    console.log('✅ 标签组更新成功，共' + labelGroups.length + '个分组');
+                    console.log('✅ 标签组更新成功，共' + labelGroups.length + '个可打印分组（标签数量>打印数量）');
                     showStatus('标签组获取成功！', true);
                 } else {
                     throw new Error(data.message || '获取标签组失败');
