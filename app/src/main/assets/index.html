@@ -661,11 +661,9 @@
         
         // 页面切换功能
         function showSettings() {
-            console.log('showSettings 被调用');
             const settingsPage = document.getElementById('settingsPage');
             if (settingsPage) {
                 settingsPage.style.display = 'block';
-                console.log('settingsPage已显示');
             }
         }
         
@@ -714,23 +712,15 @@
         
         function testPrinterWithConfig(ip, port) {
             showStatus('正在测试连接...', true);
-            console.log('测试连接 - IP:', ip, 'Port:', port);
-            console.log('PrinterInterface 可用:', !!window.PrinterInterface);
-            console.log('window 对象:', typeof window);
-            console.log('PrinterInterface 对象:', window.PrinterInterface);
             
             // 使用Android接口测试连接
             if (window.PrinterInterface && window.PrinterInterface.testPrinterConnection) {
-                console.log('调用 Android 接口测试连接');
                 try {
                     window.PrinterInterface.testPrinterConnection(ip, port);
                 } catch (error) {
-                    console.error('调用 PrinterInterface 失败:', error);
                     showStatus('调用打印机接口失败: ' + error.message, false);
                 }
             } else {
-                console.log('PrinterInterface 不可用或方法不存在');
-                console.log('PrinterInterface:', window.PrinterInterface);
                 showStatus('打印机接口不可用', false);
             }
         }
@@ -752,11 +742,9 @@
         
         // 页面切换功能
         function showSettings() {
-            console.log('showSettings 被调用');
             const settingsPage = document.getElementById('settingsPage');
             if (settingsPage) {
                 settingsPage.style.display = 'block';
-                console.log('settingsPage已显示');
             }
         }
         
@@ -855,7 +843,6 @@
             updateSettingsStatus();
             
             // 自动测试连接
-            console.log('🔄 保存配置后自动测试打印机连接...');
             await testPrinter();
         }
         
@@ -900,8 +887,6 @@
 ^FD123456789^FS
 ^XZ`;
             
-            console.log('测试页 ZPL 代码:', testZPL);
-            
             // 发送到打印机
             sendToPrinter(testZPL);
             
@@ -914,20 +899,14 @@
         
         // 标签组相关API
         function fetchLabelGroups() {
-            console.log('🔄 开始获取标签组列表...');
-            console.log('PrinterInterface 可用:', !!window.PrinterInterface);
-            
             // 使用Android接口获取标签组
             if (window.PrinterInterface && window.PrinterInterface.fetchLabelGroups) {
-                console.log('调用 Android 接口获取标签组');
                 try {
                     window.PrinterInterface.fetchLabelGroups();
                 } catch (error) {
-                    console.error('调用 PrinterInterface.fetchLabelGroups 失败:', error);
                     showStatus('调用获取标签组接口失败: ' + error.message, false);
                 }
             } else {
-                console.log('PrinterInterface 不可用或方法不存在');
                 showStatus('获取标签组接口不可用', false);
             }
         }
@@ -935,10 +914,8 @@
         // 接收标签组数据的回调函数
         function onLabelGroupsReceived(dataJson) {
             try {
-                console.log('📡 收到Vika API响应:', dataJson.substring(0, 100));
                 const data = JSON.parse(dataJson);
                 var recordCount = (data && data.data && Array.isArray(data.data.records)) ? data.data.records.length : 0;
-                console.log('📊 获取到记录数:', recordCount);
                 
                 if (data.success) {
                     // 按标签组字段分组，并检查每个分组是否有可打印记录（标签数量 > 打印数量）
@@ -977,20 +954,17 @@
                     labelGroups.forEach(group => delete group.hasPrintableRecords);
                     
                     updateLabelGroupSelect();
-                    console.log('✅ 标签组更新成功，共' + labelGroups.length + '个可打印分组（标签数量>打印数量）');
                     showStatus('标签组获取成功！', true);
                 } else {
                     throw new Error(data.message || '获取标签组失败');
                 }
             } catch (error) {
-                console.error('处理标签组数据失败:', error);
                 showStatus('处理标签组数据失败: ' + error.message, false);
             }
         }
         
         // 标签组获取失败的回调函数
         function onLabelGroupsError(errorMsg) {
-            console.error('获取标签组失败:', errorMsg);
             showStatus('获取标签组失败: ' + errorMsg, false);
         }
         
@@ -1049,7 +1023,6 @@
                     return false;
                 }
             } catch (error) {
-                console.error('获取标签数据失败:', error);
                 showStatus('获取标签数据失败: ' + error.message, false);
                 return false;
             }
@@ -1068,7 +1041,6 @@
                 updatePendingSyncCount();
                 showStatus('数据同步成功！', true);
             } catch (error) {
-                console.error('同步失败:', error);
                 showStatus('同步失败: ' + error.message, false);
             }
         }
@@ -1101,7 +1073,6 @@
                 
                 return true;
             } catch (error) {
-                console.error('更新Vika记录失败:', error);
                 throw error;
             }
         }
@@ -1129,7 +1100,6 @@
                 }
                 return null;
             } catch (error) {
-                console.error('查找记录ID失败:', error);
                 return null;
             }
         }
@@ -1313,7 +1283,6 @@
                     labelDataStatus.textContent = '未缓存';
                 }
             } catch (error) {
-                console.error('获取缓存状态失败:', error);
             }
         }
         
@@ -1392,14 +1361,12 @@
                 document.getElementById('templateName').value = template.name;
                 document.getElementById('templateContent').value = template.content;
                 currentTemplate = template;
-                console.log('模板加载成功！');
             } else {
                 // 如果没有保存的模板，使用默认模板
                 currentTemplate = {
                     name: 'ZP621标准模板',
                     content: document.getElementById('templateContent').value
                 };
-                console.log('使用默认模板');
             }
         }
         
@@ -1417,7 +1384,6 @@
             };
             
             const zplCode = generateZPL(currentTemplate.content, testData);
-            console.log('生成的ZPL代码:', zplCode);
             
             // 显示生成的ZPL代码
             showStatus('测试模板生成成功，请查看控制台日志', true);
@@ -1449,16 +1415,11 @@
             }
             
             showStatus('正在发送到打印机...', true);
-            console.log('发送打印 - IP:', ip, 'Port:', port);
-            console.log('ZPL代码:', zplCode);
-            console.log('PrinterInterface 可用:', !!window.PrinterInterface);
             
             // 使用Android接口发送ZPL代码
             if (window.PrinterInterface) {
-                console.log('调用 Android 接口发送打印');
                 window.PrinterInterface.sendToPrinter(ip, port, zplCode);
             } else {
-                console.log('PrinterInterface 不可用');
                 showStatus('打印机接口不可用', false);
             }
         }
@@ -1512,7 +1473,6 @@
             if (printerConfig) {
                 const config = JSON.parse(printerConfig);
                 if (config.ip && config.port) {
-                    console.log('🔄 启动时自动测试打印机连接...');
                     // 直接使用配置中的IP和端口测试连接
                     testPrinterWithConfig(config.ip, config.port);
                     // 更新设置页面状态
