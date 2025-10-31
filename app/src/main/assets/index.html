@@ -927,8 +927,10 @@
                         // 计算该记录是否可打印：标签数量（换标数量）> 打印数量
                         // 如果标签数量为空，认为是0；如果打印数量为空，也认为是0
                         const limitNum = (record.fields['换标数量'] == null || record.fields['换标数量'] === '' || isNaN(Number(record.fields['换标数量']))) ? 0 : Number(record.fields['换标数量']);
+                        // 兼容字段名：优先"打印数量"，其次"打印次数"
                         const printedRaw = (record.fields.hasOwnProperty('打印数量') ? record.fields['打印数量'] : record.fields['打印次数']);
-                        const printedNum = (printedRaw == null || printedRaw === '' || isNaN(Number(printedRaw))) ? 0 : Number(printedRaw);
+                        // 处理打印数量为空的情况：如果为 null、undefined、空字符串或 NaN，都认为是 0
+                        const printedNum = (printedRaw == null || printedRaw === undefined || printedRaw === '' || isNaN(Number(printedRaw))) ? 0 : Number(printedRaw);
                         const canPrint = limitNum > printedNum;
                         
                         if (!groupMap.has(groupName)) {
@@ -954,18 +956,40 @@
                     labelGroups.forEach(group => delete group.hasPrintableRecords);
                     
                     updateLabelGroupSelect();
+                    
+                    // 恢复刷新按钮状态
+                    const refreshBtn = document.getElementById('refreshBtn');
+                    if (refreshBtn) {
+                        refreshBtn.disabled = false;
+                        refreshBtn.textContent = '刷新标签组';
+                    }
+                    
                     showStatus('标签组获取成功！', true);
                 } else {
                     throw new Error(data.message || '获取标签组失败');
                 }
             } catch (error) {
                 showStatus('处理标签组数据失败: ' + error.message, false);
+                
+                // 即使出错也要恢复刷新按钮状态
+                const refreshBtn = document.getElementById('refreshBtn');
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.textContent = '刷新标签组';
+                }
             }
         }
         
         // 标签组获取失败的回调函数
         function onLabelGroupsError(errorMsg) {
             showStatus('获取标签组失败: ' + errorMsg, false);
+            
+            // 恢复刷新按钮状态
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) {
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = '刷新标签组';
+            }
         }
         
         async function fetchLabelGroupLabels(groupId) {
@@ -1176,11 +1200,13 @@
             
             fetchLabelGroups();
             
-            // 3秒后恢复按钮状态（依赖回调函数来更新状态）
+            // 10秒后超时恢复按钮状态（正常情况下会在回调中恢复）
             setTimeout(() => {
-                refreshBtn.disabled = false;
-                refreshBtn.textContent = '刷新标签组';
-            }, 3000);
+                if (refreshBtn.disabled) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.textContent = '刷新标签组';
+                }
+            }, 10000);
         }
         
         async function syncToServer() {
